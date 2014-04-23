@@ -33,6 +33,7 @@ VOID PressToContinue(LPCTSTR phaseName)
 	getchar();
 }
 
+/*
 int _tmain(int argc, _TCHAR* argv[])
 {
 	_tprintf(_T("ProcessId = %d\n"), GetCurrentProcessId());
@@ -46,3 +47,4 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	return 0;
 }
+*/
