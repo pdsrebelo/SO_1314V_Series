@@ -15,6 +15,7 @@
     <ClCompile Include="Exercicio_3.c" />
     <ClCompile Include="Exercicio_4_attachment.c" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="Pedro\Exercicio3.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MemInfo_DLL.h" />
@@ -23,8 +24,10 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D65C724A-6C95-4B82-AC01-0724C57CBC6F}</ProjectGuid>
+    <ProjectGuid>{D3EE37EE-A392-47F4-9177-22C505CF876B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Serie1_Catia</RootNamespace>
+    <RootNamespace>Serie1_SO_1314V</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -68,6 +71,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
