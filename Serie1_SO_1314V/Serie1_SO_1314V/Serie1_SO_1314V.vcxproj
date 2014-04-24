@@ -11,8 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Exercicio_3.c" />
+    <ClCompile Include="exercicio3_catia.C" />
     <ClCompile Include="Exercicio_4_attachment.c" />
+    <ClCompile Include="Pedro\Exercicio3.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D3EE37EE-A392-47F4-9177-22C505CF876B}</ProjectGuid>
