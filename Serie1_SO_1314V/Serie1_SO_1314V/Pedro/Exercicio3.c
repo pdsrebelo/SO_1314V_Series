@@ -1,7 +1,7 @@
-﻿#include <windows.h>
-#include <stdio.h>
+﻿#include <stdio.h>
+#include <Windows.h>
 #include <tchar.h> 
-#include <psapi.h>
+#include <Psapi.h>
 
 /*
 3.	Realize um programa que apresente na consola a seguinte informação global do sistema e 
@@ -60,7 +60,7 @@ BOOL globalSysInfo(DWORD processId){
 	wchar_t buffer[BUFFER];
 	CHAR * state = "",  * type = "";
 
-	printf("Process ID: %d\n", processId);
+	printf("\nProcess ID: %d\n", processId);
 
 	if (!GetPerformanceInfo(&pInfo, sizeof(pInfo))){
 		printf("GetPerformanceInfo returned with error.\n");
@@ -119,16 +119,6 @@ BOOL globalSysInfo(DWORD processId){
 	printf("3. Dimensao do Working set: %u KiB\n", workingSetSize/KiB);
 	printf("4. Identificacao das regioes:");
 
-	/*
-		○ Endereço início e fim da região;
-		○ Tipo de acesso (read, write, execute);
-		○ Protecção com que a região foi alocada inicialmente;
-		○ Estado das páginas dentro da região (commit, free, reserve);
-		○ Tipo das páginas dentro da região (image, mapped, private);
-		○ No caso do tipo de páginas ser image, indicar o ficheiro com o caminho absoluto 
-		no sistema de ficheiros de onde teve origem.
-	*/
-
 	for (i = 0; i < ullTotalVirtual; i += memBasicInfo.RegionSize){
 		/* The return value is the actual number of bytes returned in the information buffer.
 		If the function fails, the return value is zero. To get extended error information, call GetLastError.
@@ -136,19 +126,7 @@ BOOL globalSysInfo(DWORD processId){
 		if (!VirtualQueryEx(hProcess, endAddress, &memBasicInfo, sizeof(MEMORY_BASIC_INFORMATION))){
 			printf("VirtualQueryEx returned with error.\n");
 			return FALSE;
-		}
-
-		/*
-		typedef struct _MEMORY_BASIC_INFORMATION {
-		PVOID  BaseAddress;
-		PVOID  AllocationBase;
-		DWORD  AllocationProtect;
-		SIZE_T RegionSize;
-		DWORD  State;
-		DWORD  Protect;
-		DWORD  Type;
-		} MEMORY_BASIC_INFORMATION, *PMEMORY_BASIC_INFORMATION;
-		*/
+		} 
 
 		regionSize = memBasicInfo.RegionSize;
 		endAddress = (PVOID) ((SIZE_T) memBasicInfo.BaseAddress + memBasicInfo.RegionSize);
@@ -178,12 +156,6 @@ BOOL globalSysInfo(DWORD processId){
 			if (memBasicInfo.Type == 0x1000000){
 				type = "Image";
 
-				/*
-				LIST_MODULES_32BIT - 0x01 (List the 32-bit modules.)
-				LIST_MODULES_64BIT - 0x02 (List the 64-bit modules.)
-				LIST_MODULES_ALL - 0x03 (List all modules.)
-				LIST_MODULES_DEFAULT - 0x0 (Use the default behavior.)
-				*/
 				if (!EnumProcessModulesEx(hProcess, &hModule, sizeof(hModule), &lpcbNeeded, LIST_MODULES_ALL)){
 					printf("EnumProcessModulesEx returned with error.\n");
 					return FALSE;
@@ -218,8 +190,11 @@ BOOL globalSysInfo(DWORD processId){
 }
 
 int main(){
-	BOOL success = globalSysInfo(GetCurrentProcessId());
+	DWORD processID;
+	printf("Introduza o ID de um processo a correr (ou 0 para analisar o proprio processo):\n");
+	scanf_s("%d", &processID);
 
+	BOOL success = globalSysInfo(processID == 0 ? GetCurrentProcessId() : processID);
 	printf("\n------ Program terminated with %s ------", (success ? "success." : "error."));
 
 	getchar();
