@@ -11,7 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Exercicio_3.c" />
     <ClCompile Include="Exercicio_4_attachment.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
