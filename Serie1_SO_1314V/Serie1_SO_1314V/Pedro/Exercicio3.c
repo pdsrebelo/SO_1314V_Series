@@ -189,7 +189,8 @@ BOOL globalSysInfo(DWORD processId){
 	return TRUE;
 }
 
-int main(){
+
+int main2(){
 	DWORD processID;
 	printf("Introduza o ID de um processo a correr (ou 0 para analisar o proprio processo):\n");
 	scanf_s("%d", &processID);
