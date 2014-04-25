@@ -183,7 +183,7 @@ VOID getProcessInformation(DWORD processID){
 	CloseHandle(hProc);
 }
 
-
+/*
 int main(){
 	DWORD processID = 0;
 	PROCMEMINFO_C procMemInfo;
@@ -197,20 +197,20 @@ int main(){
 		printf("\nDefault ID (current process) = %d", processID);
 	}
 	
-	/* ***NEW*** */
+	//* ***NEW*** 
 	// Using the DLL's functions
 	C_GetSystemMemInfo(&sysMemInfo);
 	if (!C_GetProcMemInfo(processID, &procMemInfo) || !C_PrintProcVirtualAddress(processID)){
 		printf("\nAN ERROR OCCURRED!", GetLastError());
 		return 0;
 	}
-	/* * * * * * * */
+	//* * * * * * * 
 	
-	/* ***OLD*** */
+	//* ***OLD*** 
 	// Calling local functions (without using the DLL)
 	//getGlobalInformation();
 	//getProcessInformation(processID);
-	/* * * * * * * */
+	//* * * * * * * 
 	printf("\nSYSTEM MEMORY INFO: ");
 	printf("\nTotal Physical Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.totalPhysicalMemory / KiloB, sysMemInfo.totalPhysicalMemory / MegaB, (double)sysMemInfo.totalPhysicalMemory / GigaB);
 	printf("\nAvailable Physical Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.availablePhysicalMemory/KiloB, sysMemInfo.availablePhysicalMemory/MegaB, (double)sysMemInfo.availablePhysicalMemory/GigaB);
@@ -227,3 +227,4 @@ int main(){
 	printf("\nEND.");
 	return 1;
 }
+*/
