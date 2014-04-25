@@ -65,11 +65,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Cátia\Exercicio5_MEMINFO_DLL_C.h" />
-    <ClInclude Include="Exercicio3DLL.h" />
+    <ClInclude Include="Pedro\Exercicio5DLL.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cátia\Exercicio5.c" />
-    <ClCompile Include="Exercicio3DLL.c" />
+    <ClCompile Include="Pedro\Exercicio5DLL.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

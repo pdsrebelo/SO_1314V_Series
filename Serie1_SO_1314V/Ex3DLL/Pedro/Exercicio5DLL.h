@@ -1,5 +1,5 @@
-#ifndef EX3_DLL_
-#define EX3_DLL_
+#ifndef EX5_DLL_
+#define EX5_DLL_
 
 #include <Windows.h>
 #include <Psapi.h>

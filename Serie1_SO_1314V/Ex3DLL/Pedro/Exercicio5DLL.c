@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include <tchar.h>
 #include <Psapi.h>
-#include "Exercicio3DLL.h"
+#include "Exercicio5DLL.h"
 
 BOOL MEMINFOAPI GetSystemMemInfo(_Out_ PSYSMEMINFO pSysMemInfo){
 	printf("GetSystemMemInfo from DLL project was called!\n");

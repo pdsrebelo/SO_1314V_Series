@@ -27,7 +27,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Pedro\Exercicio3DLL.h" />
+    <ClInclude Include="Pedro\Exercicio5DLL.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D3EE37EE-A392-47F4-9177-22C505CF876B}</ProjectGuid>
