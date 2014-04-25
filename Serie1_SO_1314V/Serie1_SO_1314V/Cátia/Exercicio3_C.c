@@ -9,27 +9,6 @@
 #define MegaB 1048576
 #define GigaB 1073741824
 
-/*
-To use the functionality from the class library in the app:
-
-1-	After you create a console app, an empty program is created for you. (this file "Exercicio3_C.c")
-
-2-	To use what you created in the DLL, you must reference it. To do this, select the DLL project in Solution Explorer, and then on the menu bar, 
-	choose Project, References. In the Property Pages dialog box, expand the Common Properties node, select Framework and References, 
-	and then choose the Add New Reference button. For more information about the References dialog box, see Framework and References, 
-	Common Properties, <Projectname> Property Pages Dialog Box.
-
-3-	The Add Reference dialog box lists the libraries that you can reference. 
-	The Project tab lists the projects in the current solution and any libraries that they contain. 
-	On the Projects tab, select the check box next to the DLL you want to use ("Exercicio5_MEMINFO_DLL_C.h"), and then choose the OK button.
-
-4-	To reference the header files of the DLL, you must modify the included directories path. 
-	To do this, in the Property Pages dialog box, expand the Configuration Properties node, expand the C/C++ node, and then select General. 
-	Next to Additional Include Directories, specify the path of the location of the MathFuncsDll.h header file. 
-	You can use a relative path—for example, ..\MathFuncsDll\—then choose the OK button.
-
-5-	You can now use DLL.
-*/
 VOID printBlockAccessType(DWORD protection){
 	char*allocationProtect;
 	switch (protection) {
@@ -139,15 +118,15 @@ VOID getGlobalInformation(){
 	totalPhysMem = ppinfo->PageSize * ppinfo->PhysicalTotal;
 	totalPhysMemAvail = ppinfo->PageSize * ppinfo->PhysicalAvailable;
 
-	printf("\nTotal de memoria fisica existente: %llu KiB = %llu MiB = %.2f GiB", totalPhysMem / KiloB, totalPhysMem / MegaB, totalPhysMem / GigaB);
-	printf("\nTotal de memoria fisica disponivel: %llu KiB = %llu MiB = %.2f GiB", totalPhysMemAvail / KiloB, totalPhysMemAvail / MegaB, totalPhysMemAvail / GigaB);
-	printf("\nTotal de memoria virtual existente (fisica + page file): %llu KiB = %llu MiB = %.2f GiB", totalVirtualMem / KiloB, totalVirtualMem / MegaB, totalVirtualMem / GigaB);
-	printf("\nTotal de memoria virtual disponivel: %llu KiB = %llu MiB = %.2f GiB", totalVirtualMemAvail / KiloB, totalVirtualMemAvail / MegaB, totalVirtualMemAvail / GigaB);
+	printf("\nTotal de memoria fisica existente: %llu KiB = %llu MiB = %.2f GiB", totalPhysMem / KiloB, totalPhysMem / MegaB, (double)totalPhysMem / GigaB);
+	printf("\nTotal de memoria fisica disponivel: %llu KiB = %llu MiB = %.2f GiB", totalPhysMemAvail / KiloB, totalPhysMemAvail / MegaB, (double)totalPhysMemAvail / GigaB);
+	printf("\nTotal de memoria virtual existente (fisica + page file): %llu KiB = %llu MiB = %.2f GiB", totalVirtualMem / KiloB, totalVirtualMem / MegaB, (double)totalVirtualMem / GigaB);
+	printf("\nTotal de memoria virtual disponivel: %llu KiB = %llu MiB = %.2f GiB", totalVirtualMemAvail / KiloB, totalVirtualMemAvail / MegaB, (double)totalVirtualMemAvail / GigaB);
 	printf("\nClique em qualquer tecla para ver a informação local do processo..."); getchar();
 }
 
 VOID getProcessInformation(DWORD processID){
-	PPERFORMACE_INFORMATION ppinfo = malloc(sizeof(PERFORMACE_INFORMATION));
+	PERFORMACE_INFORMATION pinfo;
 	HANDLE hProc = NULL;
 	MEMORYSTATUSEX status;
 	MEMORY_BASIC_INFORMATION memInfo;
@@ -159,17 +138,22 @@ VOID getProcessInformation(DWORD processID){
 
 	status.dwLength = sizeof (status);
 
-	if (hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID) == NULL ||
-		!GetPerformanceInfo(ppinfo, sizeof(PERFORMACE_INFORMATION)) || !GlobalMemoryStatusEx(&status) ||
-		!GetProcessMemoryInfo(hProc, &procMemCtr, sizeof(PROCESS_MEMORY_COUNTERS))){
+	if (hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID) == NULL || GetPerformanceInfo(&pinfo, sizeof(PERFORMACE_INFORMATION)) == FALSE
+		|| GlobalMemoryStatusEx(&status) == FALSE){
+		printf("ERROR: %s\n", GetLastError());
+		return;
+	}
+	printf("\nProcess ID = %d = %d", GetProcessId(hProc), processID);
+	printf("\nTamanho de pagina = %llu KiB = %.2f MiB", pinfo.PageSize / KiloB, pinfo.PageSize / MegaB);
+	printf("\nTotal de espaco de enderecamento virtual existente: %llu KiB = %llu MiB", status.ullTotalVirtual / KiloB, status.ullTotalVirtual / MegaB);
+	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
+
+
+	if (GetProcessMemoryInfo(hProc, &procMemCtr, sizeof(procMemCtr))==0){
 		printf("ERROR: %s\n", GetLastError());
 		return;
 	}
 
-	printf("\nProcess ID = %u", GetProcessId(hProc));
-	printf("\nTamanho de pagina = %d bytes = %d KiB", ppinfo->PageSize, ppinfo->PageSize / KiloB);
-	printf("\nTotal de espaco de enderecamento virtual existente: %llu KiB = %llu MiB", status.ullTotalVirtual / KiloB, status.ullTotalVirtual / MegaB);
-	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
 	printf("\nDimensao do Working Set: %llu KiB = %llu MiB", procMemCtr.WorkingSetSize / KiloB, procMemCtr.WorkingSetSize / MegaB);
 
 	while (VirtualQueryEx(hProc, lpAddress, &memInfo, sizeof(MEMORY_BASIC_INFORMATION)) != 0){
@@ -183,6 +167,24 @@ VOID getProcessInformation(DWORD processID){
 	CloseHandle(hProc);
 }
 
+int main(){
+	DWORD processID = 0;
+	printf("\nEnter the process ID: (or 0 for current process) ");
+	scanf_s("%d", &processID);
+	printf("\n* * * PROCESS ID = %d * * *\n", processID);
+	if (processID == 0){
+		processID = GetCurrentProcessId();
+		printf("\nDefault ID (current process) = %d", processID);
+	}
+
+	//* ***OLD*** 
+	// Calling local functions (without using the DLL)
+	getGlobalInformation();
+	getProcessInformation(processID);
+	getchar();
+	//* * * * * * * 
+	return 1;
+}
 /*
 int main(){
 	DWORD processID = 0;
@@ -190,7 +192,7 @@ int main(){
 	SYSMEMINFO_C sysMemInfo;
 
 	printf("\nEnter the process ID: (or 0 for current process) ");
-	scanf_s("%x", &processID);
+	scanf_s("%d", &processID);
 	printf("\n* * * PROCESS ID = %d * * *\n", processID);
 	if (processID == 0){
 		processID = GetCurrentProcessId();
