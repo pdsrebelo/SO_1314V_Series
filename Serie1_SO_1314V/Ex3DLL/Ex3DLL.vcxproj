@@ -64,11 +64,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Cátia\Exercicio5_MEMINFO_DLL_C.h" />
+    <ClInclude Include="Catia\Exercicio5_MEMINFO_DLL_C.h" />
     <ClInclude Include="Exercicio3DLL.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Cátia\Exercicio5.c" />
+    <ClCompile Include="Catia\Exercicio5.c" />
     <ClCompile Include="Exercicio3DLL.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Cátia\Exercicio3_C.c" />
+    <ClCompile Include="Catia\Exercicio3_C.c" />
     <ClCompile Include="Exercicio4.c" />
     <ClCompile Include="Pedro\Exercicio3.c" />
     <ClCompile Include="Pedro\Exercicio5.c" />
