@@ -18,13 +18,13 @@ typedef struct SysMemInfo{
 	ULONGLONG PhysTotal;
 	ULONGLONG PhysAvailable;
 	ULONGLONG VirtualTotal;
-	ULONGLONG virtualAvailable;
+	ULONGLONG VirtualAvailable;
 } SYSMEMINFO, *PSYSMEMINFO;
 
 typedef struct ProcMemInfo{
-	ULONGLONG ullTotalVirtual;
-	ULONGLONG ullAvailVirtual;
-
+	ULONGLONG UllTotalVirtual;
+	ULONGLONG UllAvailVirtual;
+	SIZE_T WorkingSetSize;
 } PROCMEMINFO, *PPROCMEMINFO;
 
 // Retorna informação da utilização global de memória do sistema.

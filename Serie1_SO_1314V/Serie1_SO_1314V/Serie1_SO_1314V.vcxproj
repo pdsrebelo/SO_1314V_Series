@@ -12,13 +12,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Exercicio4.c" />
-    <ClCompile Include="Pedro\Exercicio3.c" />
-    <ClCompile Include="Pedro\Exercicio5.c" />
+    <ClCompile Include="Pedro\Exercicio3_P.c" />
+    <ClCompile Include="Pedro\Exercicio5_P.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ex3DLL\Ex3DLL.vcxproj">
       <Project>{73159df3-d40a-48b8-8dd1-d18728b06e31}</Project>
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Pedro\Exercicio3DLL.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D3EE37EE-A392-47F4-9177-22C505CF876B}</ProjectGuid>
