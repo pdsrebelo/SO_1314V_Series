@@ -23,7 +23,6 @@ typedef struct SysMemInfo{
 
 typedef struct ProcMemInfo {
 	DWORD processId;
-	SIZE_T pageSize;
 	SIZE_T workingSetSize;
 	ULONGLONG totalVirtualSpace;
 	ULONGLONG availableVirtualSpace;

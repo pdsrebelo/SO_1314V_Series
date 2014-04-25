@@ -136,7 +136,6 @@ VOID MEMINFO_API C_PrintProcVirtualAddress(_In_ DWORD dwProcId){
 }
 
 BOOL MEMINFO_API C_GetProcMemInfo(_In_  DWORD  dwProcId, _Out_  PPROCMEMINFO_C pProcMemInfo){
-	PPERFORMACE_INFORMATION ppinfo = malloc(sizeof(PERFORMACE_INFORMATION));
 	HANDLE hProc = NULL;
 	MEMORYSTATUSEX status;
 	MEMORY_BASIC_INFORMATION memInfo;
@@ -148,15 +147,13 @@ BOOL MEMINFO_API C_GetProcMemInfo(_In_  DWORD  dwProcId, _Out_  PPROCMEMINFO_C p
 
 	status.dwLength = sizeof (status);
 
-	if (hProc = OpenProcess(PROCESS_VM_READ|PROCESS_QUERY_INFORMATION, FALSE, dwProcId) == NULL ||
-		!GetPerformanceInfo(ppinfo, sizeof(PERFORMACE_INFORMATION)) || !GlobalMemoryStatusEx(&status) ||
+	if (hProc = OpenProcess(PROCESS_VM_READ|PROCESS_QUERY_INFORMATION, FALSE, dwProcId) == NULL || !GlobalMemoryStatusEx(&status) ||
 		!GetProcessMemoryInfo(hProc, &procMemCtr, sizeof(PROCESS_MEMORY_COUNTERS))){
 		printf("ERROR: %s\n", GetLastError());
 		return FALSE;
 	}
 
 	printf("\nProcess ID = %u", GetProcessId(hProc));
-	printf("\nTamanho de pagina = %d bytes = %d KiB", ppinfo->PageSize, ppinfo->PageSize / KiloB);
 	printf("\nTotal de espaco de enderecamento virtual existente: %llu KiB = %llu MiB", status.ullTotalVirtual / KiloB, status.ullTotalVirtual / MegaB);
 	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
 	printf("\nDimensao do Working Set: %u KiB = %.2f MiB", procMemCtr.WorkingSetSize / KiloB, (double)procMemCtr.WorkingSetSize / MegaB);

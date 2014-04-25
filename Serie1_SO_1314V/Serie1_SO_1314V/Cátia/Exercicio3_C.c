@@ -126,7 +126,6 @@ VOID getGlobalInformation(){
 }
 
 VOID getProcessInformation(DWORD processID){
-	PERFORMACE_INFORMATION pinfo;
 	HANDLE hProc = NULL;
 	MEMORYSTATUSEX status;
 	MEMORY_BASIC_INFORMATION memInfo;
@@ -138,13 +137,11 @@ VOID getProcessInformation(DWORD processID){
 
 	status.dwLength = sizeof (status);
 
-	if ((hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processID)) == NULL || GetPerformanceInfo(&pinfo, sizeof(PERFORMACE_INFORMATION)) == FALSE
-		|| GlobalMemoryStatusEx(&status) == FALSE){
+	if ((hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processID)) == NULL || GlobalMemoryStatusEx(&status) == FALSE){
 		printf("ERROR: %s\n", GetLastError());
 		return;
 	}
 	printf("\nProcess ID = %d", processID);
-	printf("\nTamanho de pagina = %llu KiB", pinfo.PageSize / KiloB);
 	printf("\nTotal de espaco de enderecamento virtual existente: %llu KiB = %llu MiB", status.ullTotalVirtual / KiloB, status.ullTotalVirtual / MegaB);
 	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
 
@@ -185,6 +182,8 @@ int main(){
 	//* * * * * * * 
 	return 1;
 }
+
+
 /*
 int main(){
 DWORD processID = 0;
