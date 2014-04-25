@@ -69,9 +69,9 @@ VOID printRegionType(DWORD type){
 }
 
 VOID printRegionInfo(DWORD nRegion, MEMORY_BASIC_INFORMATION memInfo, HANDLE hProc){
-	
+
 	printf("\n\nREGION # %i\n", nRegion);
-	
+
 	DWORD enderecoInicio = memInfo.BaseAddress;
 	DWORD enderecoFim = enderecoInicio + memInfo.RegionSize;
 	DWORD accessType = memInfo.AllocationProtect;
@@ -138,24 +138,24 @@ VOID getProcessInformation(DWORD processID){
 
 	status.dwLength = sizeof (status);
 
-	if (hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processID) == NULL || GetPerformanceInfo(&pinfo, sizeof(PERFORMACE_INFORMATION)) == FALSE
+	if ((hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processID)) == NULL || GetPerformanceInfo(&pinfo, sizeof(PERFORMACE_INFORMATION)) == FALSE
 		|| GlobalMemoryStatusEx(&status) == FALSE){
 		printf("ERROR: %s\n", GetLastError());
 		return;
 	}
-	printf("\nProcess ID = %d = %d", GetProcessId(hProc), processID);
-	printf("\nTamanho de pagina = %llu KiB = %.2f MiB", pinfo.PageSize / KiloB, pinfo.PageSize / MegaB);
+	printf("\nProcess ID = %d", processID);
+	printf("\nTamanho de pagina = %llu KiB", pinfo.PageSize / KiloB);
 	printf("\nTotal de espaco de enderecamento virtual existente: %llu KiB = %llu MiB", status.ullTotalVirtual / KiloB, status.ullTotalVirtual / MegaB);
 	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
 
 
-	if (GetProcessMemoryInfo(hProc, &procMemCtr, sizeof(procMemCtr))==0){
+	if (GetProcessMemoryInfo(hProc, &procMemCtr, sizeof(procMemCtr)) == 0){
 		printf("ERROR: %s\n", GetLastError());
 		return;
 	}
 
-	printf("\nDimensao do Working Set: %llu KiB = %llu MiB", procMemCtr.WorkingSetSize / KiloB, procMemCtr.WorkingSetSize / MegaB);
-
+	printf("\nDimensao do Working Set: %u KiB = %.2f MiB", procMemCtr.WorkingSetSize / KiloB, (double)procMemCtr.WorkingSetSize / MegaB);
+	getchar();
 	while (VirtualQueryEx(hProc, lpAddress, &memInfo, sizeof(MEMORY_BASIC_INFORMATION)) != 0){
 		lpAddress = (char*)memInfo.BaseAddress + memInfo.RegionSize;
 		if (memInfo.State == MEM_FREE)
@@ -187,46 +187,46 @@ int main(){
 }
 /*
 int main(){
-	DWORD processID = 0;
-	PROCMEMINFO_C procMemInfo;
-	SYSMEMINFO_C sysMemInfo;
+DWORD processID = 0;
+PROCMEMINFO_C procMemInfo;
+SYSMEMINFO_C sysMemInfo;
 
-	printf("\nEnter the process ID: (or 0 for current process) ");
-	scanf_s("%d", &processID);
-	printf("\n* * * PROCESS ID = %d * * *\n", processID);
-	if (processID == 0){
-		processID = GetCurrentProcessId();
-		printf("\nDefault ID (current process) = %d", processID);
-	}
-	
-	//* ***NEW*** 
-	// Using the DLL's functions
-	C_GetSystemMemInfo(&sysMemInfo);
-	if (!C_GetProcMemInfo(processID, &procMemInfo) || !C_PrintProcVirtualAddress(processID)){
-		printf("\nAN ERROR OCCURRED!", GetLastError());
-		return 0;
-	}
-	//* * * * * * * 
-	
-	//* ***OLD*** 
-	// Calling local functions (without using the DLL)
-	//getGlobalInformation();
-	//getProcessInformation(processID);
-	//* * * * * * * 
-	printf("\nSYSTEM MEMORY INFO: ");
-	printf("\nTotal Physical Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.totalPhysicalMemory / KiloB, sysMemInfo.totalPhysicalMemory / MegaB, (double)sysMemInfo.totalPhysicalMemory / GigaB);
-	printf("\nAvailable Physical Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.availablePhysicalMemory/KiloB, sysMemInfo.availablePhysicalMemory/MegaB, (double)sysMemInfo.availablePhysicalMemory/GigaB);
-	printf("\nTotal Virtual Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.totalVirtualMemory / KiloB, sysMemInfo.totalVirtualMemory / MegaB, (double)sysMemInfo.totalVirtualMemory / GigaB);
-	printf("\nAvailable Virtual Memory = %llu Kib = %llu MiB = %.2f GiB", sysMemInfo.availableVirtualMemory / KiloB, sysMemInfo.availableVirtualMemory / MegaB, (double)sysMemInfo.availableVirtualMemory / GigaB);
-	printf("\n* * * * * * * * * * * * * * * * * * * * * * * * ");
-	printf("\n\nPROCESS MEMORY INFO: ");
-	printf("\nProcess ID = %d", procMemInfo.processId); 
-	printf("\nPage Size = %s bytes = %llu KiB = %llu MiB", procMemInfo.pageSize, procMemInfo.pageSize / KiloB, procMemInfo.pageSize / MegaB);
-	printf("\nWorking Set Size = %d bytes = %llu KiB = %llu MiB", procMemInfo.workingSetSize, procMemInfo.workingSetSize / KiloB, procMemInfo.workingSetSize / MegaB);
-	printf("\nTotal Virtual Space = %llu KiB = %llu MiB = %.2f GiB", procMemInfo.totalVirtualSpace/KiloB, procMemInfo.totalVirtualSpace/MegaB, (double)procMemInfo.totalVirtualSpace/GigaB);
-	printf("\nAvailable Virtual Space = %llu KiB = %llu MiB = %.2f GiB", procMemInfo.availableVirtualSpace / KiloB, procMemInfo.availableVirtualSpace / MegaB, procMemInfo.availableVirtualSpace/GigaB);
-	printf("\n* * * * * * * * * * * * * * * * * * * * * * * * ");
-	printf("\nEND.");
-	return 1;
+printf("\nEnter the process ID: (or 0 for current process) ");
+scanf_s("%d", &processID);
+printf("\n* * * PROCESS ID = %d * * *\n", processID);
+if (processID == 0){
+processID = GetCurrentProcessId();
+printf("\nDefault ID (current process) = %d", processID);
+}
+
+//* ***NEW***
+// Using the DLL's functions
+C_GetSystemMemInfo(&sysMemInfo);
+if (!C_GetProcMemInfo(processID, &procMemInfo) || !C_PrintProcVirtualAddress(processID)){
+printf("\nAN ERROR OCCURRED!", GetLastError());
+return 0;
+}
+//* * * * * * *
+
+//* ***OLD***
+// Calling local functions (without using the DLL)
+//getGlobalInformation();
+//getProcessInformation(processID);
+//* * * * * * *
+printf("\nSYSTEM MEMORY INFO: ");
+printf("\nTotal Physical Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.totalPhysicalMemory / KiloB, sysMemInfo.totalPhysicalMemory / MegaB, (double)sysMemInfo.totalPhysicalMemory / GigaB);
+printf("\nAvailable Physical Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.availablePhysicalMemory/KiloB, sysMemInfo.availablePhysicalMemory/MegaB, (double)sysMemInfo.availablePhysicalMemory/GigaB);
+printf("\nTotal Virtual Memory = %llu KiB = %llu MiB = %.2f GiB", sysMemInfo.totalVirtualMemory / KiloB, sysMemInfo.totalVirtualMemory / MegaB, (double)sysMemInfo.totalVirtualMemory / GigaB);
+printf("\nAvailable Virtual Memory = %llu Kib = %llu MiB = %.2f GiB", sysMemInfo.availableVirtualMemory / KiloB, sysMemInfo.availableVirtualMemory / MegaB, (double)sysMemInfo.availableVirtualMemory / GigaB);
+printf("\n* * * * * * * * * * * * * * * * * * * * * * * * ");
+printf("\n\nPROCESS MEMORY INFO: ");
+printf("\nProcess ID = %d", procMemInfo.processId);
+printf("\nPage Size = %s bytes = %llu KiB = %llu MiB", procMemInfo.pageSize, procMemInfo.pageSize / KiloB, procMemInfo.pageSize / MegaB);
+printf("\nWorking Set Size = %d bytes = %llu KiB = %llu MiB", procMemInfo.workingSetSize, procMemInfo.workingSetSize / KiloB, procMemInfo.workingSetSize / MegaB);
+printf("\nTotal Virtual Space = %llu KiB = %llu MiB = %.2f GiB", procMemInfo.totalVirtualSpace/KiloB, procMemInfo.totalVirtualSpace/MegaB, (double)procMemInfo.totalVirtualSpace/GigaB);
+printf("\nAvailable Virtual Space = %llu KiB = %llu MiB = %.2f GiB", procMemInfo.availableVirtualSpace / KiloB, procMemInfo.availableVirtualSpace / MegaB, procMemInfo.availableVirtualSpace/GigaB);
+printf("\n* * * * * * * * * * * * * * * * * * * * * * * * ");
+printf("\nEND.");
+return 1;
 }
 */

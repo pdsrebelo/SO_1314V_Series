@@ -148,7 +148,7 @@ BOOL MEMINFO_API C_GetProcMemInfo(_In_  DWORD  dwProcId, _Out_  PPROCMEMINFO_C p
 
 	status.dwLength = sizeof (status);
 
-	if (hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId) == NULL ||
+	if (hProc = OpenProcess(PROCESS_VM_READ|PROCESS_QUERY_INFORMATION, FALSE, dwProcId) == NULL ||
 		!GetPerformanceInfo(ppinfo, sizeof(PERFORMACE_INFORMATION)) || !GlobalMemoryStatusEx(&status) ||
 		!GetProcessMemoryInfo(hProc, &procMemCtr, sizeof(PROCESS_MEMORY_COUNTERS))){
 		printf("ERROR: %s\n", GetLastError());
@@ -159,7 +159,7 @@ BOOL MEMINFO_API C_GetProcMemInfo(_In_  DWORD  dwProcId, _Out_  PPROCMEMINFO_C p
 	printf("\nTamanho de pagina = %d bytes = %d KiB", ppinfo->PageSize, ppinfo->PageSize / KiloB);
 	printf("\nTotal de espaco de enderecamento virtual existente: %llu KiB = %llu MiB", status.ullTotalVirtual / KiloB, status.ullTotalVirtual / MegaB);
 	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
-	printf("\nDimensao do Working Set: %llu KiB = %llu MiB", procMemCtr.WorkingSetSize / KiloB, procMemCtr.WorkingSetSize / MegaB);
+	printf("\nDimensao do Working Set: %u KiB = %.2f MiB", procMemCtr.WorkingSetSize / KiloB, (double)procMemCtr.WorkingSetSize / MegaB);
 
 	while (VirtualQueryEx(hProc, lpAddress, &memInfo, sizeof(MEMORY_BASIC_INFORMATION)) != 0){
 		lpAddress = (char*)memInfo.BaseAddress + memInfo.RegionSize;
