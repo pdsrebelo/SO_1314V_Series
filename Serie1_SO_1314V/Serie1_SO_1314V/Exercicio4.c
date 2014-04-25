@@ -33,8 +33,8 @@ VOID PressToContinue(LPCTSTR phaseName)
 	_tprintf(_T("Prima RETURN para %s\n"), phaseName);
 	getchar();
 }
-
-int _tmain2(int argc, _TCHAR* argv[])
+/*
+int _tmain(int argc, _TCHAR* argv[])
 {
 	_tprintf(_T("ProcessId = %d\n"), GetCurrentProcessId());
 	PressToContinue(_T("iniciar"));
@@ -47,3 +47,4 @@ int _tmain2(int argc, _TCHAR* argv[])
 
 	return 0;
 }
+*/
