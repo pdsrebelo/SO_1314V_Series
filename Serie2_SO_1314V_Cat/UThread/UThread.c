@@ -249,6 +249,7 @@ LIST_ENTRY SleepyQueue;		// Circular FIFO list linking the UThreads that are cur
 typedef struct SleepingThread{
 	DWORD extraTimeSleeping;
 	HANDLE uthread;
+	LIST_ENTRY Link;
 } SLEEPING_UTHREAD, *PSLEEPING_UTHREAD;
 
 DWORD UtSleep(DWORD sleepTimeInMillis){
@@ -259,24 +260,25 @@ DWORD UtSleep(DWORD sleepTimeInMillis){
 
 	sleepingThread -> extraTimeSleeping = 0;				// Initialize the extra sleeping time = 0
 	sleepingThread -> uthread = UtSelf();					// Store the ref to the running thread - so that it can be activated later
-	InsertTailList(&ReadyQueue, &(RunningThread->Link));	// This thread's handle is now saved, to be used in "UtSleepHelper" - a function that will activate this thread whenever needed
+	InsertTailList(&SleepyQueue, &(sleepingThread->Link));	// This thread's handle is now saved, to be used in "UtSleepHelper" - a function that will activate this thread whenever needed
 
 	for (;;){
 		DWORD timePassedInThisFunction = GetTickCount() - initialTime;							// Update the sleeping time (in this function)
-		if (sleepTimeInMillis > timePassedInThisFunction + sleepingThread->extraTimeSleeping)	// If the minimum time has not gone by yet
+		if (sleepTimeInMillis > timePassedInThisFunction + sleepingThread->extraTimeSleeping){	// If the minimum time has not gone by yet
+			InsertHeadList(&SleepyQueue, &(sleepingThread->Link));								// Add the sleepy thread to the list again, this time to its head
 			UtDeactivate();																		// Deactivate this running thread
+		}
 		else {
 			return timePassedInThisFunction + (sleepingThread -> extraTimeSleeping);
 		}
 	}
-	RemoveHeadList(&SleepyQueue);
 	free(sleepingThread);
 }
 
 VOID UtSleepHelper(){
 	DWORD initialTime = GetTickCount();
 	if (!IsListEmpty(&SleepyQueue)){											// If there are any threads sleeping (in the SleepyQueue)
-		PSLEEPING_UTHREAD sleepingThread = RemoveHeadList(&SleepyQueue);		// Get the first in line (Queue is FIFO)
+		PSLEEPING_UTHREAD sleepingThread = CONTAINING_RECORD(RemoveHeadList(&SleepyQueue), SLEEPING_UTHREAD, Link);	// Get the first in line (Queue is FIFO)
 		sleepingThread -> extraTimeSleeping += (GetTickCount() - initialTime);	// Increment its "extraTimeSleeping" counter
 		UtActivate(sleepingThread->uthread);									// Activate the corresponding UThread
 	}
