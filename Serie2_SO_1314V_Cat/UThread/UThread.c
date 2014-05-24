@@ -9,7 +9,13 @@
 // Authors:
 //   Carlos Martins, João Trindade, Duarte Nunes, Jorge Martins
 // 
-
+#include <windows.h>
+#include <malloc.h>
+#include <tchar.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <strsafe.h>
+#include "List.h"
 #include <crtdbg.h>
 #include "UThreadInternal.h"
 
@@ -184,7 +190,6 @@ VOID UtRun () {
 // resources are released after the context switch to the next ready thread.
 //
 VOID UtExit () {
-	SetEvent(RunningThread->finishEvt);
 	RunningThread->State = Finished;
 	NumberOfThreads -= 1;	
 	InternalExit(RunningThread, ExtractNextReadyThread());
@@ -225,16 +230,21 @@ VOID UtDeactivate() {
 // If that thread has already called UtExit(), the function returns -1. Otherwise, in case of success, the function returns 0.
 //
 int UtJoin(HANDLE thread){
+	BOOLEAN threadWasRunning = FALSE;
 	for (;;){
-		if (((PUTHREAD)thread)->State == Running){ // If the thread is running, wait for it to finish
-			WaitEvent(&((PUTHREAD)thread)->finishEvt); // After the event has been set, return success
-			return 0;
+		if (((PUTHREAD)thread)->State == Running){ // If the thread is running, register it, and wait for the thread to finish
+			threadWasRunning = TRUE;
+			UtYield();
 		}
-
-		if (((PUTHREAD)thread)->State == Finished || NumberOfThreads == 0) 
-				break; // If the thread is already finished, or there are no more threads return -1
+		if (((PUTHREAD)thread)->State == Finished){
+			if (threadWasRunning)
+				return 0;
+			else break;
+		}
+		if(NumberOfThreads == 0) 
+			break; // If the thread is already finished, or there are no more threads return -1
 		
-		UtYield(); // Else, switch the running thread...
+		UtYield(); // continue waiting
 	}
 	return -1;
 }
@@ -586,3 +596,61 @@ VOID CleanupThread (PUTHREAD Thread) {
 
 
 #endif
+
+
+
+/***
+		SERIE 2 - PARTE A - TESTS
+***/
+
+// auxFunction_for_Ex1 (This function is USELESS. Just using it for tests!)
+DWORD auxFunction_for_Ex1(DWORD countUpTo){ // counts up to the arg given; and returns the total time
+	DWORD initTime = GetTickCount();
+	DWORD c = 0;
+	for (;;){
+		if (c < countUpTo)
+			c++;
+		else break;
+	}
+	return GetTickCount() - initTime;
+}
+
+void EX1_TEST() {
+	//TODO - Test Ex.1 = UtJoin(HANDLE thread)
+
+	// Create the UThread
+	HANDLE h = UtCreate(auxFunction_for_Ex1, (VOID *)10000); // Aux function = counts up to 10000 in a For Loop 
+	
+	UtJoin(h);
+
+	// Schedule the created UThread to run!
+	Schedule(); 
+}
+
+void EX2_TEST() {
+
+	//TODO - Test Ex.2 = UtSleep(DWORD milis) & UtSleepHelper
+
+	UtCreate(UtSleep, (VOID *) 5000);		// Wait 5 sec min
+	UtCreate(UtSleepHelper, (VOID *) NULL); // Doesn't receive args
+
+
+	_tprintf(_T("Terminating EX2 TEST\n"));
+}
+
+int _tmain(int argc, TCHAR argv[]) {
+
+	UTHREAD mainThread;
+
+	InitializeListHead(&ReadyQueue);
+	InitializeListHead(&SleepyQueue);
+
+	EX2_TEST();
+
+	MainThread = &mainThread;
+	RunningThread = &mainThread;
+	Schedule();
+
+	_tprintf(_T("Terminating main system thread\n"));
+	return 0;
+}

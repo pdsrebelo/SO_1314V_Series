@@ -78,7 +78,6 @@ typedef struct _UTHREAD {
 	UT_ARGUMENT      Argument; 
 	PUCHAR           Stack;
 	UTHREAD_STATE	 State;
-	HANDLE			 finishEvt;
 } UTHREAD, *PUTHREAD;
 
 //
