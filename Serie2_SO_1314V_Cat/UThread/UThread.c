@@ -120,9 +120,23 @@ static
 FORCEINLINE
 VOID Schedule () {
 	PUTHREAD NextThread;
+	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
     NextThread = ExtractNextReadyThread();
+	
+	// Register the time before calling the ContextSwitch function
+	timeBeforeCall = GetTickCount();
+	
 	ContextSwitch(RunningThread, NextThread);
+	
+	// Register the time after the call
+	timeAfterCall = GetTickCount();
+
 	((PUTHREAD)RunningThread)->State = Running; // The new thread has a new state = Running
+
+	// The total time in milliseconds:
+	totalTimeMillis = timeAfterCall - timeBeforeCall;
+
+	printf("\nTotal time in millis = %d mHz/ms", totalTimeMillis);
 }
 
 ///////////////////////////////
