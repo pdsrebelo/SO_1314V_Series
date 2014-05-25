@@ -15,6 +15,7 @@
 #include <Windows.h>
 #include "UThread.h"
 #include "List.h"
+#include "USynch.h"
 #include <assert.h>
 //
 // The data structure representing the layout of a thread's execution context
@@ -47,23 +48,17 @@ typedef struct _UTHREAD_CONTEXT {
 } UTHREAD_CONTEXT, *PUTHREAD_CONTEXT;
 #endif
 
-
 //
 // UTHREAD_STATE: Added for "Serie 2 - Parte A", to know what is the state of the UTHREADs
+// This way, we can check if the thread has already finished,etc.
 //
 typedef enum USER_THREAD_STATE{
 	Ready,		//0
 	Running,	//1
-	Finished,	//2
-	Blocked,	//3
+	Blocked,	//2
+	Sleeping,	//3
+	Finished	//4
 }UTHREAD_STATE;
-
-static char * UTHREAD_STATE_TO_STRING[] = {
-	"Ready",
-	"Running",
-	"Finished",
-	"Blocked"
-};
 
 //
 // The descriptor of a user thread, containing an intrusive link (through which
@@ -77,7 +72,9 @@ typedef struct _UTHREAD {
 	UT_FUNCTION      Function;   
 	UT_ARGUMENT      Argument; 
 	PUCHAR           Stack;
-	UTHREAD_STATE	 State;
+	UTHREAD_STATE    State;						// The State of the thread: to be updated(ready, blocked, running,...)
+	BOOLEAN			 IsWaitingForCompletion;	// To use in method UtJoin, to know if the thread is in the JoinQueue - To prevent from adding the same thread more than once
+	EVENT			 finishedEvt;				// Event that will be Set when the thread has called UtExit()
 } UTHREAD, *PUTHREAD;
 
 //

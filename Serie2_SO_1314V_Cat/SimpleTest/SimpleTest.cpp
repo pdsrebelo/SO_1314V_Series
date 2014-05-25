@@ -2,6 +2,7 @@
 //
 
 #include "stdafx.h"
+#include "usynch.h"
 #include "List.h"
 
 /////////////////////////////////////////////
@@ -74,8 +75,6 @@ int main () {
 	UtInit();
  
 	Test1();
-
-	printf("Press any key to finish");
 	getchar();
 	
 	 

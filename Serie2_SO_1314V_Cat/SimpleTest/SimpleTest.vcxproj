@@ -154,6 +154,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\USynch\USynch.vcxproj">
+      <Project>{95b5813f-910d-4159-b3d8-2e8b83f6a1f1}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\UThread\UThread.vcxproj">
       <Project>{2650ca3c-1dde-4d98-96d6-927b382f409a}</Project>
     </ProjectReference>

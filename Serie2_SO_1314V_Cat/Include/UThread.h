@@ -49,11 +49,6 @@ VOID UtEnd ();
 UTHREAD_API
 VOID UtRun ();
 
-
-//
-UTHREAD_API
-int UtJoin();
-
 //
 // Creates a user thread to run the specified function. The thread is placed
 // at the end of the ready queue.
