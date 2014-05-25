@@ -106,7 +106,7 @@ DWORD UtSleep(DWORD sleepTimeInMilis){
 	InsertTailList(&DeactivatedQueue, &RunningThread->Link);
 	UtDeactivate();
 
-	// When the function returns to this point, it means that the UtSchedulle already put the deactivated thread in the ready queue.
+	// When the function returns to this point, it means that the UtSchedulle already added the deactivated thread in the ready queue.
 	return GetTickCount() - RunningThread->InitialTime;
 }
 
@@ -116,7 +116,7 @@ DWORD UtSleep(DWORD sleepTimeInMilis){
 static
 FORCEINLINE
 BOOL IsThreadInQueue(PLIST_ENTRY queue, HANDLE thread){
-	if (IsListEmpty(queue)){
+	if (!IsListEmpty(queue)){
 		PLIST_ENTRY firstNode = queue->Flink;
 		PLIST_ENTRY currNode = queue->Flink;
 		do{
@@ -152,7 +152,7 @@ BOOL IsHandleValid(HANDLE thread){
 // tenha evocado a função UtExit.
 //
 DWORD UtJoin(HANDLE thread){
-	if (IsHandleValid(thread)){
+	if (!IsHandleValid(thread)){
 		return -1;
 	}
 	
@@ -162,7 +162,7 @@ DWORD UtJoin(HANDLE thread){
 	InsertTailList(&DeactivatedQueue, &RunningThread->Link);
 	UtDeactivate();
 
-	// When the function returns to this point, it means that the UtExit already put the deactivated thread in the ready queue.
+	// When the function returns to this point, it means that the UtExit already added the deactivated thread in the ready queue.
 	return 0;
 }
 
@@ -193,7 +193,7 @@ VOID Schedule () {
 			DWORD timePassed = GetTickCount() - currThread->InitialTime;
 
 			// Is the currThread, that was previously sleeping, ready to run?
-			if (timePassed >= currThread->TimeToWait){
+			if (currThread->TimeToWait !=-1 && timePassed >= currThread->TimeToWait){ // TimeToWait starts with -1
 				RemoveEntryList(DeactivatedQueue.Flink);
 				UtActivate((HANDLE)currThread);
 			}
@@ -417,6 +417,12 @@ HANDLE UtCreate (UT_FUNCTION Function, UT_ARGUMENT Argument) {
 	Thread->ThreadContext->ESI = 0x22222222;
 	Thread->ThreadContext->EBP = 0x00000000;									  
 	Thread->ThreadContext->RetAddr = InternalStart;
+
+	//
+	// Initialize InitialTime and TimeToWait.
+	//
+	Thread->InitialTime = -1;
+	Thread->TimeToWait = -1;
 
 	//
 	// Ready the thread.

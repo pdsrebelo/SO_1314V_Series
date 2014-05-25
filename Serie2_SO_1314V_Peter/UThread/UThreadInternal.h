@@ -60,8 +60,8 @@ typedef struct _UTHREAD {
 	UT_ARGUMENT      Argument; 
 	PUCHAR           Stack;
 	HANDLE		     WaitingThread;
-	DWORD			 InitialTime;
-	DWORD			 TimeToWait;
+	LONG			 InitialTime;
+	LONG			 TimeToWait;
 } UTHREAD, *PUTHREAD;
 
 //
