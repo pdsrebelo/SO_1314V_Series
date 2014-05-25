@@ -21,9 +21,10 @@
 #include <crtdbg.h>
 #include <stdio.h>
 
-#include "ThreadSwitchTest.h"
+#include "Ex1_Test.h"
+#include "Ex2_Test.h"
+#include "Ex3_Test.h"
 #include "..\Include\Uthread.h"
-
 
 ///////////////////////////////////////////////////////////////
 //															 //
@@ -66,53 +67,17 @@ VOID Test1 ()  {
 	printf("\n\n :: Test 1 - END :: \n");
 }
 
-VOID ThreadJoinTest(UT_ARGUMENT Argument){
-	ULONG tId = (ULONG)Argument;
-	printf("\n :: Thread %d - BEGIN :: \n\n", tId);
-
-	printf("\n :: Thread %d - END :: \n\n", tId);
-}
-
-VOID JoinTest(){
-	ULONG i, nrOfThreads = 2;
-
-	for (i = 0; i < nrOfThreads; i++){
-		UtCreate(ThreadSleepTest, (UT_ARGUMENT)(i + 1));
-	}
-
-	UtRun();
-}
-
-VOID SleepTest(){
-	ULONG i, nrOfThreads = 2;
-
-	for (i = 0; i < nrOfThreads; i++){
-		UtCreate(ThreadSleepTest, (UT_ARGUMENT)(i + 1));
-	}
-
-	UtRun();
-}
-
-VOID ThreadSleepTest(UT_ARGUMENT Argument){
-	ULONG tId = (ULONG)Argument;
-	DWORD sleepTime = (rand() % 100) * 100;         // sleepTime in the range 0 to 9900
-	printf("\n :: Thread %d - BEGIN :: \n\n", tId);
-	printf("\n :: Thread %d - Will sleep for %d miliseconds :: \n\n", tId, sleepTime);
-	UtSleep(sleepTime);
-	printf("\n :: Thread %d - END :: \n\n", tId);
-}
-
 int main(){
 	UtInit();
 
-	//JoinTest();
-	//SleepTest();
+	JoinTest();		/* Ex1_Test */
+	//SleepTest();	/* Ex2_Test */
 
 	/*
 	Escreva programas para determinar o tempo de comutação de threads na biblioteca UThread. Para                            
 	a medição de tempos, utilize a função da Windows API GetTickCount.
 	*/
-	SwitchTest();
+	//SwitchTest();	/* Ex3_Test */
 
 	printf("Press any key to finish");
 	getchar();

@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "..\Include\Uthread.h"
-#include "ThreadSwitchTest.h"
+#include "Ex1_Test.h"
 
 #define NR_OF_YIELDS 1000000
 #define TO_NANO 1000
@@ -12,7 +12,7 @@ VOID MainFunc(UT_ARGUMENT Argument){
 	DWORD initTimer;
 	ULONG tId = (ULONG)Argument;
 
-	printf("\n :: Thread %d - BEGIN :: \n\n", tId);
+	printf("\n :: Thread %d - BEGIN :: \n", tId);
 
 	initTimer = GetTickCount();
 	while (yieldCount < NR_OF_YIELDS){
@@ -23,7 +23,7 @@ VOID MainFunc(UT_ARGUMENT Argument){
 
 	bigSample = bigSample / NR_OF_YIELDS;
 
-	printf("\n :: Thread %d - AVERAGE TIME TO DO A CONTEXT SWITCH %f NANO :: \n\n", tId, (bigSample * TO_NANO));
+	printf("\n :: Thread %d - AVERAGE TIME TO DO A CONTEXT SWITCH %f NANO :: \n", tId, (bigSample * TO_NANO));
 	printf("\n :: Thread %d - END :: \n\n", tId);
 }
 
