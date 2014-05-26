@@ -1,71 +1,80 @@
 #include "stdafx.h"
+#include "stdafx.h"
+#include <crtdbg.h>
+#include <stdio.h>
 #include "../Include/USynch.h"
 #include "../Include/List.h"
 #include "../Include/UThread.h"
+
 /***
-SERIE 2 - PARTE A - TESTS
+SERIE 2 - PARTE A - TESTS FOR Ex.1
 ***/
 
-// auxFunction_for_Ex1 (This function is USELESS. Just using it for tests!)
-VOID auxFunction_for_Ex1(UT_ARGUMENT countUpTo){ // counts up to the arg given; and returns the total time
-	DWORD initTime = GetTickCount();
-	DWORD totalTime;
-	DWORD c = 0;
-	for (;;){
-		if (c < (DWORD)countUpTo)
-			c++;
-		else break;
-	}
+HANDLE testerInvalidHandle, testerHandle;
 
-	totalTime = GetTickCount() - initTime;
+VOID uselessFunction(UT_ARGUMENT arg){
+	ULONG c = 0;
+	while (c < (ULONG)arg){
+		HANDLE h2 = UtCreate(uselessFunction, NULL);
+		int res = UtJoin(h2);
+		printf("\n\n -> Expected = %d ... Returned = %d \n", 0, res);
+		_ASSERTE(res == 0);
+		c++;
+	}
+}
+
+VOID auxFunction_for_Ex1(UT_ARGUMENT arg){
+
+	int badResult = UtJoin(testerInvalidHandle); // Expected return = -1
+	printf("\n\n -> Expected = %d ... Returned = %d \n", -1, badResult);
+	_ASSERTE(badResult == -1);
+
+	int anotherBadResult = UtJoin(NULL); // Expected return = -1
+	printf("\n\n -> Expected = %d ... Returned = %d \n", -1, anotherBadResult);
+	_ASSERTE(anotherBadResult == -1);
+
+	int goodResult = UtJoin(testerHandle); // Expected return = 0
+	printf("\n\n -> Expected = %d ... Returned = %d \n", 0, goodResult);
+	_ASSERTE(goodResult == 0);
 }
 
 void EX1_TEST() {
-	_tprintf(_T("Starting EX1 UtJoin TEST.\n"));
-
-	//TODO - Test Ex.1 = UtJoin(HANDLE thread)
-
-	// Create the UThread
-	HANDLE h1 = UtCreate(auxFunction_for_Ex1, (UT_ARGUMENT)10000); // Aux function = counts up to 10000 in a For Loop 
-	HANDLE h2 = UtCreate(auxFunction_for_Ex1, (UT_ARGUMENT)10000);
-	HANDLE h3 = UtCreate(auxFunction_for_Ex1, (UT_ARGUMENT)10000);
-
-	//UtJoin(h1);
-	//UtJoin(h2);
-	//UtJoin(h3);
-
+	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 1 (UtJoin function) TEST -- ***  ::: \n"));
+	UtCreate(auxFunction_for_Ex1, NULL);
+	testerHandle = UtCreate(uselessFunction, (UT_ARGUMENT)5);
 	UtRun();
+	_tprintf(_T("\n\n :::  *** -- EXERCICIO 1 - TEST COMPLETED -- ***  ::: \n"));
 }
+
+
+/***
+SERIE 2 - PARTE A - TESTS FOR Ex.2
+***/
 
 void auxFunction_for_Ex2(UT_ARGUMENT arg){
 
 }
 
 void EX2_TEST() {
-	_tprintf(_T("Starting EX2 UtSleep TEST.\n"));
-	//TODO - Test Ex.2 = UtSleep(DWORD milis) & UtSleepHelper
-	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)NULL);
+	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 2 (UtSleep function) TEST -- ***  ::: \n"));
 
+	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)NULL);
 	//UtCreate(UtSleepHelper, (VOID *)NULL);  // Doesn't receive args
+	// TODO
 
 	UtRun();
+	_tprintf(_T("\n\n :::  *** -- EXERCICIO 2 - TEST COMPLETED -- ***  ::: \n"));
 }
+
+
+/***
+SERIE 2 - PARTE A - TESTS FOR Ex.3
+***/
 
 void EX3_TEST() {
+	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 3 (CONTEXT SWITCH TIME) TEST -- ***  ::: \n"));
 
-	_tprintf(_T("Starting EX3 TEST.\n"));
-
+	// TODO
 	UtRun();
+	_tprintf(_T("\n\n :::  *** -- EXERCICIO 3 - TEST COMPLETED -- ***  ::: \n"));
 }
-
-/*
-int main() {
-	EX1_TEST();
-	//EX2_TEST();
-	//EX3_TEST();
-
-	_tprintf(_T("Terminated all the tests.\n"));
-	return 0;
-}
-
-*/

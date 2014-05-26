@@ -2,12 +2,12 @@
 //
 
 #include "stdafx.h"
-#include "..\Include\USynch.h"
-#include "..\Include\List.h"
-#include "..\Include\UThread.h"
+#include "USynch.h"
+#include "List.h"
+#include "UThread.h"
 #include <crtdbg.h>
 #include <stdio.h>
-
+#include "Serie2_ParteA_Test.h"
 /////////////////////////////////////////////
 //
 // CCISEL 
@@ -50,7 +50,6 @@ VOID Test1_Thread (UT_ARGUMENT Argument) {
 VOID Test1 ()  {
 	ULONG Index;
 
-	
 	Test1_Count = 0; 
 
 	printf("\n :: Test 1 - BEGIN :: \n\n");
@@ -68,11 +67,15 @@ VOID Test1 ()  {
 int main () {
 	UtInit();
  
+	// The UThread test that the teacher gave us
 	Test1();
-	getchar();
 	
-	 
-	UtEnd();
+	// The tests created for Serie 2 - Parte A
+	EX1_TEST();
+	//EX2_TEST();
+	//EX3_TEST();
+	
+	getchar();
 	return 0;
 }
 

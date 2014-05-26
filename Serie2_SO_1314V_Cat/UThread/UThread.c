@@ -122,10 +122,6 @@ VOID Schedule() {
 	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
 	NextThread = ExtractNextReadyThread();
 
-	if (NextThread->IsWaitingForCompletion){ // If the next thread to run has called UtJoin ('IsWaitingForCompletion = TRUE'), Activate it!
-		UtActivate((HANDLE)NextThread);			// Once activated, the thread will be waiting for its end (the "finishedEvt" event set)
-	}
-
 	// Register the time before calling the ContextSwitch function
 	timeBeforeCall = GetTickCount();
 
@@ -137,15 +133,9 @@ VOID Schedule() {
 	// The total time in milliseconds:
 	totalTimeMillis = timeAfterCall - timeBeforeCall;
 
-	printf("\nTotal time in millis = %d ms", totalTimeMillis);
-	printf(" = %d seconds", totalTimeMillis / 1000);
-	
-		/*
-	PUTHREAD NextThread;
-	NextThread = ExtractNextReadyThread();
-	ContextSwitch(RunningThread, NextThread);
-	*/
-	
+	printf("Context Switch time = %d milliseconds", totalTimeMillis);
+	printf(" = %d microseconds", totalTimeMillis / 1000); 
+	printf(" = %d nanoseconds", totalTimeMillis / 1000000);
 }
 
 ///////////////////////////////
@@ -218,9 +208,7 @@ VOID UtRun() {
 //
 VOID UtExit() {
 	RunningThread->State = Finished;					// Change the thread's State to 'Finished'
-	RunningThread->IsWaitingForCompletion = FALSE;		// The thread has finished
 	EventSet(&RunningThread->finishedEvt);			// Set the Event - The thread is finishing now!
-
 	NumberOfThreads -= 1;								// Decrement the threads counter
 	InternalExit(RunningThread, ExtractNextReadyThread());
 	_ASSERTE(!"Supposed to be here!");
@@ -248,24 +236,16 @@ int UtJoin(HANDLE thread){
 
 	// If the thread handle is invalid, the thread has already finished, or there are no more threads return -1
 
-	if (thread == NULL || NumberOfThreads == 0)
+	if (thread == NULL)
 		return -1;
 
 	uthread = (PUTHREAD)thread;
 
-	if (uthread->State == Ready){
-
-		// If the thread is Ready and it has never called UtJoin before (it isn't waiting yet)
-		if (!uthread->IsWaitingForCompletion){
-
-			// Activate the 'IsWaitingForCompletion' flag and Deactivate the thread - Another function will activate it later, when it's time for it to run.
-			uthread->IsWaitingForCompletion = TRUE;
-			UtDeactivate();
-
-			if (!uthread->IsWaitingForCompletion){	// After being activated again: If the thread really finished, return 0 (success)
-				EventWait(&uthread->finishedEvt);
-				return 0;
-			}
+	if (uthread->State == Ready || uthread->State == Running){
+		uthread->IsWaitingForCompletion = TRUE;
+		for (;;){
+			EventWait(&uthread->finishedEvt);
+			return 0;
 		}
 	}
 	return -1; // If the thread isn't ready return -1
@@ -311,8 +291,6 @@ VOID UtSleepHelper(){
 			UtActivate(sleepingThread->uthread);									// Activate the corresponding UThread
 			currNode = currNode->Flink;
 		} while (currNode != head);
-
-
 	}
 }
 
@@ -339,8 +317,8 @@ HANDLE UtSelf() {
 // Halts the execution of the current user thread.
 //
 VOID UtDeactivate() {
-	RunningThread->State = Blocked;
 	Schedule();
+	RunningThread->State = Blocked;
 }
 
 
