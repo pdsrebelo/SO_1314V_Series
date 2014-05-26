@@ -153,6 +153,9 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Software\Masm64\Bin\ml64 /c %(FullPath)</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)%(Filename).obj</Outputs>
     </CustomBuild>
+    <ClCompile Include="..\USynch\Event.c" />
+    <ClCompile Include="..\USynch\Mutex.c" />
+    <ClCompile Include="..\USynch\Semaphore.c" />
     <ClCompile Include="UThread.c" />
   </ItemGroup>
   <ItemGroup>

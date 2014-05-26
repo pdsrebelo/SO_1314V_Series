@@ -73,9 +73,16 @@ typedef struct _UTHREAD {
 	UT_ARGUMENT      Argument; 
 	PUCHAR           Stack;
 	UTHREAD_STATE    State;						// The State of the thread: to be updated(ready, blocked, running,...)
-	BOOLEAN			 IsWaitingForCompletion;	// To use in method UtJoin, to know if the thread is in the JoinQueue - To prevent from adding the same thread more than once
+	BOOL			 IsWaitingForCompletion;	// To use in method UtJoin, to know if the thread is in the JoinQueue - To prevent from adding the same thread more than once
 	EVENT			 finishedEvt;				// Event that will be Set when the thread has called UtExit()
 } UTHREAD, *PUTHREAD;
+
+
+typedef struct SleepingThread{
+	DWORD extraTimeSleeping;
+	HANDLE uthread;
+	LIST_ENTRY Link;
+} SLEEPING_UTHREAD, *PSLEEPING_UTHREAD;
 
 //
 // The fixed stack size of a user thread.

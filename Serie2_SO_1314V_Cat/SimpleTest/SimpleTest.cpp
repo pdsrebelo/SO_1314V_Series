@@ -2,8 +2,11 @@
 //
 
 #include "stdafx.h"
-#include "usynch.h"
-#include "List.h"
+#include "..\Include\USynch.h"
+#include "..\Include\List.h"
+#include "..\Include\UThread.h"
+#include <crtdbg.h>
+#include <stdio.h>
 
 /////////////////////////////////////////////
 //
@@ -17,12 +20,6 @@
 #define DEBUG
 
 #define MAX_THREADS 10
-
-#include <crtdbg.h>
-#include <stdio.h>
-
-#include "..\Include\Uthread.h"
-
 
 ///////////////////////////////////////////////////////////////
 //															 //
@@ -67,9 +64,6 @@ VOID Test1 ()  {
 	_ASSERTE(Test1_Count == MAX_THREADS);
 	printf("\n\n :: Test 1 - END :: \n");
 }
-
-
-
 
 int main () {
 	UtInit();

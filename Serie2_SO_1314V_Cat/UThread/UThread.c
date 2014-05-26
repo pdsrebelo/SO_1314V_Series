@@ -9,14 +9,7 @@
 // Authors:
 //   Carlos Martins, João Trindade, Duarte Nunes, Jorge Martins
 // 
-#include <windows.h>
-#include <malloc.h>
-#include <tchar.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <strsafe.h>
-#include "List.h"
-#include "USynch.h"
+
 #include <crtdbg.h>
 #include "UThreadInternal.h"
 
@@ -36,10 +29,12 @@ ULONG NumberOfThreads;
 // currently schedulable. The next thread to run is retrieved from the
 // head of this list.
 //
-static LIST_ENTRY ReadyQueue;
+static
+LIST_ENTRY ReadyQueue;
 
 // SERIE 2 - PARTE A - EX 1 e EX 2
-static LIST_ENTRY SleepyQueue;		// Circular FIFO list linking the UThreads that are currently sleeping
+static 
+LIST_ENTRY SleepyQueue;		// Circular FIFO list linking the UThreads that are currently sleeping
 
 //
 // The currently executing thread.
@@ -119,14 +114,10 @@ PUTHREAD ExtractNextReadyThread() {
 //
 // Schedule a new thread to run
 //
-
-//
-// Exercicio 3 - Serie 2 - Parte A - Catia Ormonde, nº36923
-// This function was updated to get the time, in milliseconds, that it takes to switch from a running thread to another.
-//
 static
 FORCEINLINE
 VOID Schedule() {
+	
 	PUTHREAD NextThread;
 	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
 	NextThread = ExtractNextReadyThread();
@@ -143,12 +134,18 @@ VOID Schedule() {
 	// Register the time after the call
 	timeAfterCall = GetTickCount();
 
-	((PUTHREAD)RunningThread)->State = Running; // The new thread has a new state = Running
-
 	// The total time in milliseconds:
 	totalTimeMillis = timeAfterCall - timeBeforeCall;
 
-	printf("\nTotal time in millis = %d mHz/ms", totalTimeMillis);
+	printf("\nTotal time in millis = %d ms", totalTimeMillis);
+	printf(" = %d seconds", totalTimeMillis / 1000);
+	
+		/*
+	PUTHREAD NextThread;
+	NextThread = ExtractNextReadyThread();
+	ContextSwitch(RunningThread, NextThread);
+	*/
+	
 }
 
 ///////////////////////////////
@@ -212,45 +209,22 @@ VOID UtRun() {
 	MainThread = NULL;
 }
 
+
+
+
 //
 // Terminates the execution of the currently running thread. All associated
 // resources are released after the context switch to the next ready thread.
 //
 VOID UtExit() {
-	NumberOfThreads -= 1;						// Decrement the threads counter
-	RunningThread->State = Finished;			// Change the thread's State to 'Finished'
-	EventSet(&RunningThread->finishedEvt);		// Set the Event - The thread is finishing now!
+	RunningThread->State = Finished;					// Change the thread's State to 'Finished'
+	RunningThread->IsWaitingForCompletion = FALSE;		// The thread has finished
+	EventSet(&RunningThread->finishedEvt);			// Set the Event - The thread is finishing now!
+
+	NumberOfThreads -= 1;								// Decrement the threads counter
 	InternalExit(RunningThread, ExtractNextReadyThread());
 	_ASSERTE(!"Supposed to be here!");
 }
-
-//
-// Relinquishes the processor to the first user thread in the ready queue.
-// If there are no ready threads, the function returns immediately.
-//
-VOID UtYield() {
-	if (!IsListEmpty(&ReadyQueue)) {
-		RunningThread->State = Ready; // We are going to change the running thread, so the current running thread needs to have its state updated to "Ready"
-		InsertTailList(&ReadyQueue, &RunningThread->Link);
-		Schedule();
-	}
-}
-
-//
-// Returns a HANDLE to the executing user thread.
-//
-HANDLE UtSelf() {
-	return (HANDLE)RunningThread;
-}
-
-//
-// Halts the execution of the current user thread.
-//
-VOID UtDeactivate() {
-	RunningThread->State = Blocked;
-	Schedule();
-}
-
 
 //
 // Exercicio 1 - Serie 2 - Parte A - Catia Ormonde, nº36923
@@ -296,19 +270,11 @@ int UtJoin(HANDLE thread){
 	}
 	return -1; // If the thread isn't ready return -1
 }
-
 //
 // Exercicio 2 - Serie 2 - Parte A - Catia Ormonde, nº36923
 // Blocks the thread that invokes this function for, at least, "sleepTimeInMillis" milliseconds
 // This function needs another auxiliary function, to Activate the thread that is deactivated here!
 //
-
-typedef struct SleepingThread{
-	DWORD extraTimeSleeping;
-	HANDLE uthread;
-	LIST_ENTRY Link;
-} SLEEPING_UTHREAD, *PSLEEPING_UTHREAD;
-
 DWORD UtSleep(DWORD sleepTimeInMillis){
 
 	DWORD initialTime = GetTickCount();		// Start counting the time that the thread will be sleeping
@@ -334,12 +300,49 @@ DWORD UtSleep(DWORD sleepTimeInMillis){
 
 VOID UtSleepHelper(){
 	DWORD initialTime = GetTickCount();
-	if (!IsListEmpty(&SleepyQueue)){											// If there are any threads sleeping (in the SleepyQueue)
-		PSLEEPING_UTHREAD sleepingThread = CONTAINING_RECORD(RemoveHeadList(&SleepyQueue), SLEEPING_UTHREAD, Link);	// Get the first in line (Queue is FIFO)
-		sleepingThread->extraTimeSleeping += (GetTickCount() - initialTime);	// Increment its "extraTimeSleeping" counter
-		UtActivate(sleepingThread->uthread);									// Activate the corresponding UThread
+	if (!IsListEmpty(&SleepyQueue)){
+		PLIST_ENTRY head = SleepyQueue.Flink;
+		PLIST_ENTRY currNode = SleepyQueue.Flink;
+		// If there are any threads sleeping (in the SleepyQueue)
+		do{
+
+			PSLEEPING_UTHREAD sleepingThread = CONTAINING_RECORD(currNode, SLEEPING_UTHREAD, Link);	// Get the first in line (Queue is FIFO)
+			sleepingThread->extraTimeSleeping += (GetTickCount() - initialTime);	// Increment its "extraTimeSleeping" counter
+			UtActivate(sleepingThread->uthread);									// Activate the corresponding UThread
+			currNode = currNode->Flink;
+		} while (currNode != head);
+
+
 	}
 }
+
+//
+// Relinquishes the processor to the first user thread in the ready queue.
+// If there are no ready threads, the function returns immediately.
+//
+VOID UtYield() {
+	if (!IsListEmpty(&ReadyQueue)) {
+		RunningThread->State = Ready; // We are going to change the running thread, so the current running thread needs to have its state updated to "Ready"
+		InsertTailList(&ReadyQueue, &RunningThread->Link);
+		Schedule();
+	}
+}
+
+//
+// Returns a HANDLE to the executing user thread.
+//
+HANDLE UtSelf() {
+	return (HANDLE)RunningThread;
+}
+
+//
+// Halts the execution of the current user thread.
+//
+VOID UtDeactivate() {
+	RunningThread->State = Blocked;
+	Schedule();
+}
+
 
 //
 // Places the specified user thread at the end of the ready queue, where it
@@ -443,6 +446,12 @@ HANDLE UtCreate(UT_FUNCTION Function, UT_ARGUMENT Argument) {
 	// Ready the thread.
 	//
 	NumberOfThreads += 1;
+	
+	// Added for Serie 2 - Parte A
+	Thread->IsWaitingForCompletion = FALSE;
+	EventInit(&Thread->finishedEvt, FALSE);
+	//
+	
 	UtActivate((HANDLE)Thread);
 
 	return (HANDLE)Thread;
@@ -643,71 +652,3 @@ VOID CleanupThread(PUTHREAD Thread) {
 
 
 #endif
-
-
-
-/***
-SERIE 2 - PARTE A - TESTS
-***/
-
-// auxFunction_for_Ex1 (This function is USELESS. Just using it for tests!)
-DWORD auxFunction_for_Ex1(DWORD countUpTo){ // counts up to the arg given; and returns the total time
-	DWORD initTime = GetTickCount();
-	DWORD c = 0;
-	for (;;){
-		if (c < countUpTo)
-			c++;
-		else break;
-	}
-	return GetTickCount() - initTime;
-}
-
-void EX1_TEST() {
-
-
-	//TODO - Test Ex.1 = UtJoin(HANDLE thread)
-
-	// Create the UThread
-	HANDLE h1 = UtCreate(auxFunction_for_Ex1, (VOID *)10000); // Aux function = counts up to 10000 in a For Loop 
-	HANDLE h2 = UtCreate(auxFunction_for_Ex1, (VOID *)10000); 
-	HANDLE h3 = UtCreate(auxFunction_for_Ex1, (VOID *)10000); 
-
-	UtJoin(h1);
-	UtJoin(h2);
-	UtJoin(h3);
-
-	// Schedule the created UThreads to run!
-	Schedule();
-}
-
-void auxFunction_for_Ex2(){
-	UtCreate(UtSleep, (VOID *)5000); // Wait 5 sec
-}
-
-void EX2_TEST() {
-
-	//TODO - Test Ex.2 = UtSleep(DWORD milis) & UtSleepHelper
-	UtCreate(auxFunction_for_Ex2, (VOID*)NULL);
-	//UtCreate(UtSleepHelper, (VOID *)NULL);  // Doesn't receive args
-
-	Schedule();
-}
-
-void EX3_TEST() {
-}
-
-int _tmain(int argc, TCHAR argv[]) {
-
-	UTHREAD mainThread;
-
-	EX1_TEST();
-	EX2_TEST();
-	EX3_TEST();
-
-	MainThread = &mainThread;
-	RunningThread = &mainThread;
-	Schedule();
-
-	_tprintf(_T("Terminating main system thread\n"));
-	return 0;
-}

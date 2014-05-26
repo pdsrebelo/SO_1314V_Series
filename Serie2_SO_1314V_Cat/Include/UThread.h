@@ -89,6 +89,26 @@ VOID UtDeactivate ();
 UTHREAD_API
 VOID UtActivate (HANDLE ThreadHandle);
 
+//
+// Serie 2 - Parte A
+//
+UTHREAD_API
+int UtJoin(HANDLE thread);
+
+//
+// Serie 2 - Parte A
+//
+UTHREAD_API
+DWORD UtSleep(DWORD sleepTimeInMillis);
+
+//
+// Serie 2 - Parte A
+//
+UTHREAD_API
+VOID UtSleepHelper();
+
+
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
