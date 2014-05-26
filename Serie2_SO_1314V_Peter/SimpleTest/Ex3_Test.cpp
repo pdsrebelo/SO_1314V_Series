@@ -37,6 +37,4 @@ VOID AuxFunc(UT_ARGUMENT Argument){
 VOID SwitchTest(){
 	UtCreate(MainFunc, (UT_ARGUMENT)1);
 	UtCreate(AuxFunc, (UT_ARGUMENT)2);
-
-	UtRun();
 }

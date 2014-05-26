@@ -100,7 +100,6 @@ VOID __fastcall InternalExit (PUTHREAD Thread, PUTHREAD NextThread);
 //
 
 DWORD UtSleep(DWORD sleepTimeInMilis){
-	//PUTHREAD aux = CONTAINING_RECORD(DeactivatedQueue.Flink, UTHREAD, Link);
 	RunningThread->InitialTime = GetTickCount();
 	RunningThread->TimeToWait = sleepTimeInMilis;
 	InsertTailList(&DeactivatedQueue, &RunningThread->Link);
@@ -117,7 +116,6 @@ static
 FORCEINLINE
 BOOL IsThreadInQueue(PLIST_ENTRY queue, HANDLE thread){
 	if (!IsListEmpty(queue)){
-		PLIST_ENTRY firstNode = queue->Flink;
 		PLIST_ENTRY currNode = queue->Flink;
 		do{
 			PUTHREAD currThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
@@ -125,7 +123,7 @@ BOOL IsThreadInQueue(PLIST_ENTRY queue, HANDLE thread){
 				return TRUE;
 			}
 			currNode = currNode->Flink;
-		} while (firstNode != currNode);
+		} while (queue != currNode);
 	}
 	return FALSE;
 }
@@ -186,7 +184,6 @@ FORCEINLINE
 VOID Schedule () {
 	// Search in the deactivated queue if there're threads ready to run
 	if (!IsListEmpty(&DeactivatedQueue)){
-		PLIST_ENTRY firstNode = DeactivatedQueue.Flink;
 		PLIST_ENTRY currNode = DeactivatedQueue.Flink;
 		do{
 			PUTHREAD currThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
@@ -194,12 +191,13 @@ VOID Schedule () {
 
 			// Is the currThread, that was previously sleeping, ready to run?
 			if (currThread->TimeToWait !=-1 && timePassed >= currThread->TimeToWait){ // TimeToWait starts with -1
-				RemoveEntryList(DeactivatedQueue.Flink);
+				RemoveEntryList(currNode);
+				currNode = DeactivatedQueue.Flink;
 				UtActivate((HANDLE)currThread);
 			}
 
 			currNode = currNode->Flink;
-		} while (firstNode != currNode);
+		} while (&DeactivatedQueue != currNode);
 	}
 
 	PUTHREAD NextThread;
@@ -319,7 +317,6 @@ HANDLE UtSelf () {
 VOID UtDeactivate() {
 	Schedule();
 }
-
 
 //
 // Places the specified user thread at the end of the ready queue, where it
@@ -476,7 +473,6 @@ VOID __fastcall ContextSwitch (PUTHREAD CurrentThread, PUTHREAD NextThread) {
 // Frees the resources associated with Thread.
 // __fastcall sets the calling convention such that Thread is in ECX.
 //
-
 static
 VOID __fastcall CleanupThread (PUTHREAD Thread) {
 	free(Thread->Stack);

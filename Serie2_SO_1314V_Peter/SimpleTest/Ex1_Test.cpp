@@ -11,11 +11,11 @@ VOID ThreadJoinTest(UT_ARGUMENT Argument){
 	printf("\n :: Thread %d - BEGIN :: \n", tId);
 
 	// utJoinResult = UtJoin(t4); // It should return -1; t4 is not a valid handle.
-	utJoinResult = UtJoin(t4);
+	utJoinResult = UtJoin(t3);
 
 	printf("\n :: Thread %d - UtJoin returned: %d :: \n", tId, utJoinResult);
 
-	printf("\n :: Thread %d - END :: \n\n", tId);
+	printf("\n :: Thread %d - END :: \n", tId);
 }
 
 VOID ReallyLongFunc(UT_ARGUMENT Argument){
@@ -27,13 +27,11 @@ VOID ReallyLongFunc(UT_ARGUMENT Argument){
 	for (i = 0; i < ITERATIONS; i++)
 		count += i;
 
-	printf("\n :: Thread %d - END :: \n\n", tId);
+	printf("\n :: Thread %d - END :: \n", tId);
 }
 
 VOID JoinTest(){
 	t1 = UtCreate(ThreadJoinTest, (UT_ARGUMENT)1);
 	t2 = UtCreate(ReallyLongFunc, (UT_ARGUMENT)2);
 	t3 = UtCreate(ReallyLongFunc, (UT_ARGUMENT)3);
-
-	UtRun();
 }
