@@ -279,7 +279,7 @@ VOID UtExit () {
 			PUTHREAD currThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
 
 			if ((PUTHREAD)currThread->WaitingThread == RunningThread){
-				RemoveEntryList(currThread);
+				RemoveEntryList(currNode);
 				currNode = DeactivatedQueue.Flink;
 				currThread->WaitingThread = NULL;
 				UtActivate((HANDLE)currThread);
