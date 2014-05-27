@@ -8,14 +8,12 @@ HANDLE t1, t2, t3, t4;
 VOID ThreadJoinTest(UT_ARGUMENT Argument){
 	DWORD utJoinResult;
 	ULONG tId = (ULONG)Argument;
-	printf("\n :: Thread %d - BEGIN :: \n", tId);
+	printf("\n :: Thread %d - BEGIN (will wait for thread 3 to finish) :: \n", tId);
 
 	// utJoinResult = UtJoin(t4); // It should return -1; t4 is not a valid handle.
 	utJoinResult = UtJoin(t3);
 
-	printf("\n :: Thread %d - UtJoin returned: %d :: \n", tId, utJoinResult);
-
-	printf("\n :: Thread %d - END :: \n", tId);
+	printf("\n :: Thread %d - END (UtJoin returned %d) :: \n", tId, utJoinResult);
 }
 
 VOID ReallyLongFunc(UT_ARGUMENT Argument){
@@ -24,8 +22,10 @@ VOID ReallyLongFunc(UT_ARGUMENT Argument){
 
 	printf("\n :: Thread %d - BEGIN :: \n", tId);
 
-	for (i = 0; i < ITERATIONS; i++)
+	for (i = 0; i < ITERATIONS; i++){
 		count += i;
+		UtYield();
+	}
 
 	printf("\n :: Thread %d - END :: \n", tId);
 }

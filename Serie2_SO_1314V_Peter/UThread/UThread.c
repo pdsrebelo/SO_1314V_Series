@@ -189,14 +189,13 @@ VOID Schedule () {
 			PUTHREAD currThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
 			DWORD timePassed = GetTickCount() - currThread->InitialTime;
 
+			currNode = currNode->Flink;
+
 			// Is the currThread, that was previously sleeping, ready to run?
-			if (currThread->TimeToWait !=-1 && timePassed >= currThread->TimeToWait){ // TimeToWait starts with -1
-				RemoveEntryList(currNode);
-				currNode = DeactivatedQueue.Flink;
+			if (currThread->TimeToWait != -1 && timePassed >= currThread->TimeToWait){ // TimeToWait starts with -1
+				RemoveEntryList(currNode->Blink);
 				UtActivate((HANDLE)currThread);
 			}
-
-			currNode = currNode->Flink;
 		} while (&DeactivatedQueue != currNode);
 	}
 
@@ -273,20 +272,18 @@ VOID UtRun () {
 VOID UtExit () {
 	// Is the RunningThread blocking any other thread to finish?
 	if (!IsListEmpty(&DeactivatedQueue)){
-		PLIST_ENTRY firstNode = DeactivatedQueue.Flink;
 		PLIST_ENTRY currNode = DeactivatedQueue.Flink;
 		do{
 			PUTHREAD currThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
 
+			currNode = currNode->Flink;
+			
 			if ((PUTHREAD)currThread->WaitingThread == RunningThread){
-				RemoveEntryList(currNode);
-				currNode = DeactivatedQueue.Flink;
+				RemoveEntryList(currNode->Blink);
 				currThread->WaitingThread = NULL;
 				UtActivate((HANDLE)currThread);
 			}
-
-			currNode = currNode->Flink;
-		} while (firstNode != currNode);
+		} while (&DeactivatedQueue != currNode);
 	}
 
 	NumberOfThreads -= 1;	
