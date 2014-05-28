@@ -301,6 +301,7 @@ VOID UtSleepHelper(){
 			nextNode = currNode->Flink;
 			if (nextNode == dummy || currNode == nextNode)
 				break;
+			currNode = nextNode;
 		}
 		UtDeactivate(); // sleepHelperThread is deactivated!
 	}
