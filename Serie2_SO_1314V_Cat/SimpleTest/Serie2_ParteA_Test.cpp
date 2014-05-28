@@ -39,11 +39,13 @@ VOID auxFunction_for_Ex1(UT_ARGUMENT arg){
 }
 
 void EX1_TEST() {
+	UtInit();
 	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 1 (UtJoin function) TEST -- ***  ::: \n"));
 	UtCreate(auxFunction_for_Ex1, NULL);
 	testerHandle = UtCreate(uselessFunction, (UT_ARGUMENT)5);
 	UtRun();
 	_tprintf(_T("\n\n :::  *** -- EXERCICIO 1 - TEST COMPLETED -- ***  ::: \n"));
+	UtEnd();
 }
 
 
@@ -51,19 +53,30 @@ void EX1_TEST() {
 SERIE 2 - PARTE A - TESTS FOR Ex.2
 ***/
 
-void auxFunction_for_Ex2(UT_ARGUMENT arg){
-
+// function that call UtSleep
+void auxFunction_for_Ex2(UT_ARGUMENT time){
+	DWORD minimumTime = (DWORD)time;				// Minimum time for the thread to Sleep
+	DWORD totalTimeWaiting = UtSleep(minimumTime);	// Expected return: >= 4000
+	printf("\n\n -> Expected: >= %d ... Returned: %d \n", minimumTime, totalTimeWaiting);
+	_ASSERTE(totalTimeWaiting >= minimumTime);
 }
 
 void EX2_TEST() {
+	UtInit();
 	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 2 (UtSleep function) TEST -- ***  ::: \n"));
 
+	// Wait more than 0 milliseconds
 	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)NULL);
-	//UtCreate(UtSleepHelper, (VOID *)NULL);  // Doesn't receive args
-	// TODO
+	
+	// Wait more than 2000 milliseconds
+	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)2000);
+	
+	// Wait more than 10000 milliseconds
+	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)10000);
 
 	UtRun();
 	_tprintf(_T("\n\n :::  *** -- EXERCICIO 2 - TEST COMPLETED -- ***  ::: \n"));
+	UtEnd();
 }
 
 
@@ -72,9 +85,11 @@ SERIE 2 - PARTE A - TESTS FOR Ex.3
 ***/
 
 void EX3_TEST() {
+	UtInit();
 	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 3 (CONTEXT SWITCH TIME) TEST -- ***  ::: \n"));
 
 	// TODO
 	UtRun();
 	_tprintf(_T("\n\n :::  *** -- EXERCICIO 3 - TEST COMPLETED -- ***  ::: \n"));
+	UtEnd();
 }

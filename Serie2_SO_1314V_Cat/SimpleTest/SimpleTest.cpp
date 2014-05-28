@@ -50,6 +50,8 @@ VOID Test1_Thread (UT_ARGUMENT Argument) {
 VOID Test1 ()  {
 	ULONG Index;
 
+	UtInit();
+
 	Test1_Count = 0; 
 
 	printf("\n :: Test 1 - BEGIN :: \n\n");
@@ -65,14 +67,13 @@ VOID Test1 ()  {
 }
 
 int main () {
-	UtInit();
  
 	// The UThread test that the teacher gave us
 	Test1();
 	
 	// The tests created for Serie 2 - Parte A
 	EX1_TEST();
-	//EX2_TEST();
+	EX2_TEST();
 	//EX3_TEST();
 	
 	getchar();

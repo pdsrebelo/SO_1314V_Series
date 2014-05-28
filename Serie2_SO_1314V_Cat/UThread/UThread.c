@@ -35,6 +35,9 @@ LIST_ENTRY ReadyQueue;
 // SERIE 2 - PARTE A - EX 1 e EX 2
 static 
 LIST_ENTRY SleepyQueue;		// Circular FIFO list linking the UThreads that are currently sleeping
+// Thread that will activate the sleeping threads (that called UtSleep)
+static
+PUTHREAD SleepHelperThread;
 
 //
 // The currently executing thread.
@@ -43,6 +46,7 @@ LIST_ENTRY SleepyQueue;		// Circular FIFO list linking the UThreads that are cur
 static
 #endif
 PUTHREAD RunningThread;
+
 
 
 
@@ -120,6 +124,14 @@ VOID Schedule() {
 	
 	PUTHREAD NextThread;
 	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
+
+	if (!IsListEmpty(&SleepyQueue)){
+		if (SleepHelperThread == NULL)
+			SleepHelperThread = (PUTHREAD)UtCreate(UtSleepHelper, NULL);
+		if (SleepHelperThread->State == Blocked)
+			UtActivate(SleepHelperThread);
+	}
+
 	NextThread = ExtractNextReadyThread();
 
 	// Register the time before calling the ContextSwitch function
@@ -133,9 +145,9 @@ VOID Schedule() {
 	// The total time in milliseconds:
 	totalTimeMillis = timeAfterCall - timeBeforeCall;
 
-	printf("Context Switch time = %d milliseconds", totalTimeMillis);
-	printf(" = %d microseconds", totalTimeMillis / 1000); 
-	printf(" = %d nanoseconds", totalTimeMillis / 1000000);
+	printf("\nContext Switch time = %lu ms", totalTimeMillis);
+	printf(" = %lu microseconds", totalTimeMillis * 1000); 
+	printf(" = %lu nanoseconds", totalTimeMillis * 1000000);
 }
 
 ///////////////////////////////
@@ -255,42 +267,42 @@ int UtJoin(HANDLE thread){
 // Blocks the thread that invokes this function for, at least, "sleepTimeInMillis" milliseconds
 // This function needs another auxiliary function, to Activate the thread that is deactivated here!
 //
+
+
 DWORD UtSleep(DWORD sleepTimeInMillis){
 
 	DWORD initialTime = GetTickCount();		// Start counting the time that the thread will be sleeping
-	HANDLE runningThread = UtSelf();
-	PSLEEPING_UTHREAD sleepingThread = ((PSLEEPING_UTHREAD)malloc(sizeof (struct SleepingThread)));// Will be updated with the sleep time (counted outside this function)
-
-	sleepingThread->extraTimeSleeping = 0;				// Initialize the extra sleeping time = 0
-	sleepingThread->uthread = UtSelf();					// Store the ref to the running thread - so that it can be activated later
-	InsertTailList(&SleepyQueue, &(sleepingThread->Link));	// This thread's handle is now saved, to be used in "UtSleepHelper" - a function that will activate this thread whenever needed
-
 	for (;;){
 		DWORD timePassedInThisFunction = GetTickCount() - initialTime;							// Update the sleeping time (in this function)
-		if (sleepTimeInMillis > timePassedInThisFunction + sleepingThread->extraTimeSleeping){	// If the minimum time has not gone by yet
-			InsertHeadList(&SleepyQueue, &(sleepingThread->Link));								// Add the sleepy thread to the list again, this time to its head
+		if (sleepTimeInMillis > timePassedInThisFunction){	// If the minimum time has not gone by yet
+			InsertTailList(&SleepyQueue, &(RunningThread->Link));								// Add the sleepy thread to the list again, this time to its head
 			UtDeactivate();																		// Deactivate this running thread
 		}
 		else {
-			return timePassedInThisFunction + (sleepingThread->extraTimeSleeping);
+			return timePassedInThisFunction;
 		}
 	}
-	free(sleepingThread);
 }
 
 VOID UtSleepHelper(){
 	DWORD initialTime = GetTickCount();
-	if (!IsListEmpty(&SleepyQueue)){
-		PLIST_ENTRY head = SleepyQueue.Flink;
-		PLIST_ENTRY currNode = SleepyQueue.Flink;
-		// If there are any threads sleeping (in the SleepyQueue)
-		do{
+	PLIST_ENTRY dummy = &SleepyQueue;
 
-			PSLEEPING_UTHREAD sleepingThread = CONTAINING_RECORD(currNode, SLEEPING_UTHREAD, Link);	// Get the first in line (Queue is FIFO)
-			sleepingThread->extraTimeSleeping += (GetTickCount() - initialTime);	// Increment its "extraTimeSleeping" counter
-			UtActivate(sleepingThread->uthread);									// Activate the corresponding UThread
-			currNode = currNode->Flink;
-		} while (currNode != head);
+	if (!IsListEmpty(&SleepyQueue)){
+
+		PLIST_ENTRY currNode = dummy->Flink;
+		
+		// If there are any threads sleeping (in the SleepyQueue)
+		for (;;){
+			PUTHREAD sleepingThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
+			PLIST_ENTRY nextNode;
+
+			UtActivate(sleepingThread);	// Activate the corresponding UThread
+			nextNode = currNode->Flink;
+			if (nextNode == dummy || currNode == nextNode)
+				break;
+		}
+		UtDeactivate(); // sleepHelperThread is deactivated!
 	}
 }
 
