@@ -128,8 +128,6 @@ VOID Schedule() {
 	if (!IsListEmpty(&SleepyQueue)){
 		if (SleepHelperThread == NULL)
 			SleepHelperThread = (PUTHREAD)UtCreate(UtSleepHelper, NULL);
-		if (SleepHelperThread->State == Blocked)
-			UtActivate(SleepHelperThread);
 	}
 
 	NextThread = ExtractNextReadyThread();
@@ -293,17 +291,16 @@ VOID UtSleepHelper(){
 		PLIST_ENTRY currNode = dummy->Flink;
 		
 		// If there are any threads sleeping (in the SleepyQueue)
-		for (;;){
-			PUTHREAD sleepingThread = CONTAINING_RECORD(currNode, UTHREAD, Link);
-			PLIST_ENTRY nextNode;
+		do{
+			PUTHREAD sleepingThread = CONTAINING_RECORD(RemoveHeadList(&SleepyQueue), UTHREAD, Link);
+			PLIST_ENTRY nextNode = currNode->Flink;
 
-			UtActivate(sleepingThread);	// Activate the corresponding UThread
-			nextNode = currNode->Flink;
-			if (nextNode == dummy || currNode == nextNode)
+			UtActivate(sleepingThread);	// Activate the corresponding UThread 
+			
+			if (currNode == nextNode) 
 				break;
 			currNode = nextNode;
-		}
-		UtDeactivate(); // sleepHelperThread is deactivated!
+		} while (currNode != dummy);
 	}
 }
 
