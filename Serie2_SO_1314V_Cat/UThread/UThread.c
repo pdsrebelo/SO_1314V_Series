@@ -46,6 +46,7 @@ PUTHREAD RunningThread;
 
 
 
+
 //
 // The user thread proxy of the underlying operating system thread. This
 // thread is switched back in when there are no more runnable user threads,
@@ -120,6 +121,11 @@ VOID Schedule() {
 	
 	PUTHREAD NextThread;
 	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
+
+	if (!IsListEmpty(&SleepyQueue)){
+		UtCreate(UtSleepHelper, NULL);
+	}
+
 	NextThread = ExtractNextReadyThread();
 
 	// Register the time before calling the ContextSwitch function
@@ -133,9 +139,12 @@ VOID Schedule() {
 	// The total time in milliseconds:
 	totalTimeMillis = timeAfterCall - timeBeforeCall;
 
-	printf("Context Switch time = %d milliseconds", totalTimeMillis);
-	printf(" = %d microseconds", totalTimeMillis / 1000); 
-	printf(" = %d nanoseconds", totalTimeMillis / 1000000);
+	// Print results
+	if (totalTimeMillis > 0){
+		printf("\nContext Switch time = %lu ms", totalTimeMillis);
+		printf(" = %lu microseconds", totalTimeMillis * 1000);
+		printf(" = %lu nanoseconds", totalTimeMillis * 1000000);
+	}
 }
 
 ///////////////////////////////
@@ -255,42 +264,42 @@ int UtJoin(HANDLE thread){
 // Blocks the thread that invokes this function for, at least, "sleepTimeInMillis" milliseconds
 // This function needs another auxiliary function, to Activate the thread that is deactivated here!
 //
+
+
 DWORD UtSleep(DWORD sleepTimeInMillis){
 
 	DWORD initialTime = GetTickCount();		// Start counting the time that the thread will be sleeping
-	HANDLE runningThread = UtSelf();
-	PSLEEPING_UTHREAD sleepingThread = ((PSLEEPING_UTHREAD)malloc(sizeof (struct SleepingThread)));// Will be updated with the sleep time (counted outside this function)
-
-	sleepingThread->extraTimeSleeping = 0;				// Initialize the extra sleeping time = 0
-	sleepingThread->uthread = UtSelf();					// Store the ref to the running thread - so that it can be activated later
-	InsertTailList(&SleepyQueue, &(sleepingThread->Link));	// This thread's handle is now saved, to be used in "UtSleepHelper" - a function that will activate this thread whenever needed
-
 	for (;;){
-		DWORD timePassedInThisFunction = GetTickCount() - initialTime;							// Update the sleeping time (in this function)
-		if (sleepTimeInMillis > timePassedInThisFunction + sleepingThread->extraTimeSleeping){	// If the minimum time has not gone by yet
-			InsertHeadList(&SleepyQueue, &(sleepingThread->Link));								// Add the sleepy thread to the list again, this time to its head
-			UtDeactivate();																		// Deactivate this running thread
+		DWORD timePassedInThisFunction = GetTickCount() - initialTime;	// Update the sleeping time (in this function)
+		if (sleepTimeInMillis > timePassedInThisFunction){				// If the minimum time has not gone by yet
+			InsertTailList(&SleepyQueue, &(RunningThread->Link));		// Add the sleepy thread to the list again
+			UtDeactivate();												// Deactivate this running thread
 		}
 		else {
-			return timePassedInThisFunction + (sleepingThread->extraTimeSleeping);
+			return timePassedInThisFunction;
 		}
 	}
-	free(sleepingThread);
 }
 
 VOID UtSleepHelper(){
 	DWORD initialTime = GetTickCount();
+	PLIST_ENTRY dummy = &SleepyQueue;
+
 	if (!IsListEmpty(&SleepyQueue)){
-		PLIST_ENTRY head = SleepyQueue.Flink;
-		PLIST_ENTRY currNode = SleepyQueue.Flink;
+
+		PLIST_ENTRY currNode = dummy->Flink;
+		
 		// If there are any threads sleeping (in the SleepyQueue)
 		do{
+			PUTHREAD sleepingThread = CONTAINING_RECORD(RemoveHeadList(&SleepyQueue), UTHREAD, Link);
+			PLIST_ENTRY nextNode = currNode->Flink;
 
-			PSLEEPING_UTHREAD sleepingThread = CONTAINING_RECORD(currNode, SLEEPING_UTHREAD, Link);	// Get the first in line (Queue is FIFO)
-			sleepingThread->extraTimeSleeping += (GetTickCount() - initialTime);	// Increment its "extraTimeSleeping" counter
-			UtActivate(sleepingThread->uthread);									// Activate the corresponding UThread
-			currNode = currNode->Flink;
-		} while (currNode != head);
+			UtActivate(sleepingThread);	// Activate the corresponding UThread
+			
+			if (currNode == nextNode) 
+				break;
+			currNode = nextNode;
+		} while (currNode != dummy);
 	}
 }
 
