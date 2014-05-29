@@ -73,8 +73,12 @@ int main () {
 	
 	// The tests created for Serie 2 - Parte A
 	EX1_TEST();
+	printf("\nPress any key to continue to TEST 2.");
+	getchar();
 	EX2_TEST();
-	//EX3_TEST();
+	printf("\nPress any key to continue to TEST 3.");
+	getchar();
+	EX3_TEST();
 	
 	getchar();
 	return 0;

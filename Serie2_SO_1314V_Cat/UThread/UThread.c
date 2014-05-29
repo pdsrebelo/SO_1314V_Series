@@ -35,9 +35,6 @@ LIST_ENTRY ReadyQueue;
 // SERIE 2 - PARTE A - EX 1 e EX 2
 static 
 LIST_ENTRY SleepyQueue;		// Circular FIFO list linking the UThreads that are currently sleeping
-// Thread that will activate the sleeping threads (that called UtSleep)
-static
-PUTHREAD SleepHelperThread;
 
 //
 // The currently executing thread.
@@ -126,8 +123,7 @@ VOID Schedule() {
 	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
 
 	if (!IsListEmpty(&SleepyQueue)){
-		if (SleepHelperThread == NULL)
-			SleepHelperThread = (PUTHREAD)UtCreate(UtSleepHelper, NULL);
+		UtCreate(UtSleepHelper, NULL);
 	}
 
 	NextThread = ExtractNextReadyThread();
@@ -143,9 +139,12 @@ VOID Schedule() {
 	// The total time in milliseconds:
 	totalTimeMillis = timeAfterCall - timeBeforeCall;
 
-	printf("\nContext Switch time = %lu ms", totalTimeMillis);
-	printf(" = %lu microseconds", totalTimeMillis * 1000); 
-	printf(" = %lu nanoseconds", totalTimeMillis * 1000000);
+	// Print results
+	if (totalTimeMillis > 0){
+		printf("\nContext Switch time = %lu ms", totalTimeMillis);
+		printf(" = %lu microseconds", totalTimeMillis * 1000);
+		printf(" = %lu nanoseconds", totalTimeMillis * 1000000);
+	}
 }
 
 ///////////////////////////////
@@ -295,7 +294,7 @@ VOID UtSleepHelper(){
 			PUTHREAD sleepingThread = CONTAINING_RECORD(RemoveHeadList(&SleepyQueue), UTHREAD, Link);
 			PLIST_ENTRY nextNode = currNode->Flink;
 
-			UtActivate(sleepingThread);	// Activate the corresponding UThread 
+			UtActivate(sleepingThread);	// Activate the corresponding UThread
 			
 			if (currNode == nextNode) 
 				break;
