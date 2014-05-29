@@ -270,10 +270,10 @@ DWORD UtSleep(DWORD sleepTimeInMillis){
 
 	DWORD initialTime = GetTickCount();		// Start counting the time that the thread will be sleeping
 	for (;;){
-		DWORD timePassedInThisFunction = GetTickCount() - initialTime;							// Update the sleeping time (in this function)
-		if (sleepTimeInMillis > timePassedInThisFunction){	// If the minimum time has not gone by yet
-			InsertTailList(&SleepyQueue, &(RunningThread->Link));								// Add the sleepy thread to the list again, this time to its head
-			UtDeactivate();																		// Deactivate this running thread
+		DWORD timePassedInThisFunction = GetTickCount() - initialTime;	// Update the sleeping time (in this function)
+		if (sleepTimeInMillis > timePassedInThisFunction){				// If the minimum time has not gone by yet
+			InsertTailList(&SleepyQueue, &(RunningThread->Link));		// Add the sleepy thread to the list again
+			UtDeactivate();												// Deactivate this running thread
 		}
 		else {
 			return timePassedInThisFunction;
