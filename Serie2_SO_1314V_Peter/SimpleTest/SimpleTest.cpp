@@ -70,14 +70,14 @@ VOID Test1 ()  {
 int main(){
 	UtInit();
 
-	JoinTest();		/* Ex1_Test */
+	//JoinTest();		/* Ex1_Test */
 	//SleepTest();	/* Ex2_Test */
 
 	/*
 	Escreva programas para determinar o tempo de comutação de threads na biblioteca UThread. Para                            
 	a medição de tempos, utilize a função da Windows API GetTickCount.
 	*/
-	//SwitchTest();	/* Ex3_Test */
+	SwitchTest();	/* Ex3_Test */
 
 	UtRun();
 

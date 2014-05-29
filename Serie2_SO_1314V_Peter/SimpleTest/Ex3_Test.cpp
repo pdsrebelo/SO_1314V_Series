@@ -2,36 +2,32 @@
 #include "..\Include\Uthread.h"
 #include "Ex1_Test.h"
 
-#define NR_OF_YIELDS 1000000
-#define TO_NANO 1000
-
-ULONG yieldCount;
+#define NR_OF_YIELDS 10000000
+#define TO_NANO 1000000
 
 VOID MainFunc(UT_ARGUMENT Argument){
 	float bigSample;
-	DWORD initTimer;
+	DWORD initTimer, count = 0;
 	ULONG tId = (ULONG)Argument;
 
 	printf("\n :: Thread %d - BEGIN :: \n", tId);
 
 	initTimer = GetTickCount();
-	while (yieldCount < NR_OF_YIELDS){
+	while ((count++) < NR_OF_YIELDS/2)
 		UtYield();
-		yieldCount++;
-	}
+
 	bigSample = GetTickCount() - initTimer;
 
 	bigSample = bigSample / NR_OF_YIELDS;
 
 	printf("\n :: Thread %d - AVERAGE TIME TO DO A CONTEXT SWITCH %f NANO :: \n", tId, (bigSample * TO_NANO));
-	printf("\n :: Thread %d - END :: \n\n", tId);
+	printf("\n :: Thread %d - END :: \n", tId);
 }
 
 VOID AuxFunc(UT_ARGUMENT Argument){
-	while (yieldCount < NR_OF_YIELDS){
+	DWORD count = 0;
+	while ((count++) < NR_OF_YIELDS/2)
 		UtYield();
-		yieldCount++;
-	}
 }
 
 VOID SwitchTest(){
