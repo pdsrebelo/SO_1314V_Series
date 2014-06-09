@@ -3,113 +3,99 @@
 #include <stdio.h>
 #include "CounterUtils.h"
 
-#define MAX_NUMBERS 8
+/*
+Deverá medir os tempos de execução do cálculo do somatório, no mínimo, por uma única thread, por
+um número de threads correspondente ao número de processadores lógicos do sistema e, por último, por
+um valor de threads 10 vezes superior ao número de processadores lógicos do sistema.
+*/
+
+#define MAX_NUMBERS (1024 * 1024) /* Considere um array de inteiros com dimensão na ordem dos MBytes. */
 
 typedef struct {
-	DWORD leftIdx;
-	DWORD rightIdx;
+	LONGLONG leftIdx;
+	LONGLONG rightIdx;
 } Indexes, * PIndexes;
 
-HANDLE hThreads[4];
-DWORD numbers[MAX_NUMBERS] = { 1, 2, 3, 4, 5, 6, 7, 8 };
-DWORD bigSum;
-LARGE_INTEGER startTime1, startTime2, startTime3;
+HANDLE hThreads[40];
+LONGLONG numbers[MAX_NUMBERS];
+LONGLONG bigSum;
+LARGE_INTEGER startTime;
 
-unsigned  _stdcall CalcSum(void * params){
-	DWORD i, sum = 0;
+void FillArray(){
+	LONGLONG i;
+	for (i = 0; i <= MAX_NUMBERS; i++)
+		numbers[i] = i+1;
+}
+
+unsigned _stdcall CalcSum(void * params){
+	LONGLONG i, sum = 0;
 	PIndexes args = (PIndexes) params;
 
 	for (i = args->leftIdx; i <= args->rightIdx; i++){
 		sum += numbers[i];
 	}
 
-	printf("Left Idx: %d; Right Idx: %d; Sum: %d\n", args->leftIdx, args->rightIdx, sum);
+	//printf("Left Idx: %llu; Right Idx: %llu; Sum: %llu\n", args->leftIdx, args->rightIdx, sum);
 
 	bigSum += sum;
 
 	return 0;
 }
 
-// Using all the available processors
-void Test1(){
+DWORD GetNumberOfProcessors(){
 	SYSTEM_INFO si;
-	DWORD i, step;
-
-	printf("--- Test 1 is going to start ---\n");
 	GetSystemInfo(&si);
+	return si.dwNumberOfProcessors;
+}
 
-	step = MAX_NUMBERS / si.dwNumberOfProcessors;
+void Test(DWORD numberOfThreads){
+	LONGLONG i, step;
+
+	step = MAX_NUMBERS / numberOfThreads;
 	bigSum = 0;
 
-	startTime1 = StartCounter();
-	for (i = 0; i < si.dwNumberOfProcessors; i++){
+	startTime = StartCounter();
+	for (i = 0; i < numberOfThreads; i++){
 		PIndexes args;
 		args = (PIndexes)malloc(sizeof(args));
 		args->leftIdx = i * step;
 		args->rightIdx = (i * step) + (step - 1);
 		hThreads[i] = (HANDLE)_beginthreadex(NULL, 0, CalcSum, args, 0, NULL);
 	}
-}
-
-// Using only half of the available processors
-void Test2(){
-	SYSTEM_INFO si;
-	DWORD i, step;
-
-	printf("--- Test 2 is going to start ---\n");
-	GetSystemInfo(&si);
-
-	step = MAX_NUMBERS / (si.dwNumberOfProcessors / 2 );
-	bigSum = 0;
-
-	startTime2 = StartCounter();
-	for (i = 0; i < si.dwNumberOfProcessors / 2 ; i++){
-		PIndexes args;
-		args = (PIndexes)malloc(sizeof(args));
-		args->leftIdx = i * step;
-		args->rightIdx = (i * step) + (step - 1);
-		hThreads[i] = (HANDLE)_beginthreadex(NULL, 0, CalcSum, args, 0, NULL);
-	}
-}
-
-// Using only one processor
-void Test3(){
-	printf("--- Test 3 is going to start ---\n");
-
-	bigSum = 0;
-
-	startTime3 = StartCounter();
-	PIndexes args;
-	args = (PIndexes)malloc(sizeof(args));
-	args->leftIdx = 0;
-	args->rightIdx = MAX_NUMBERS;
-	hThreads[0] = (HANDLE)_beginthreadex(NULL, 0, CalcSum, args, 0, NULL);
 }
 
 int main(){
-	/******************** TEST 1 ********************/
-	Test1();
-	WaitForMultipleObjects(4, hThreads, TRUE, INFINITE);
+	FillArray();
+	DWORD nProcs = GetNumberOfProcessors();
 
-	printf("\nThe sum is: %d\nTime spent calculating: %llu microseconds\n\n", bigSum, GetCounter(startTime1));
-	/************************************************/
-
-
-	/******************** TEST 2 ********************/
-	Test2();
-	WaitForMultipleObjects(2, hThreads, TRUE, INFINITE);	
-
-	printf("\nThe sum is: %d\nTime spent calculating: %llu microseconds\n\n", bigSum, GetCounter(startTime2));
-	/************************************************/
-
-	/******************** TEST 3 ********************/
-	Test3();
+	/******************** TEST 1 - Using just one Processor ********************/
+	printf("------ Test 1 - Using just one Processor ------\n");
+	Test(1);
 	WaitForMultipleObjects(1, hThreads, TRUE, INFINITE);
 
-	printf("\nThe sum is: %d\nTime spent calculating: %llu microseconds\n", bigSum, GetCounter(startTime3));
-	/************************************************/
+	printf("\nThe sum is: %llu\nTime spent calculating: %llu microseconds\n", bigSum, GetCounter(startTime));
+	printf("-------------- Test 1 has ended ---------------\n\n");
+	/**************************************************************************/
 
-	printf("\nPress any key to exit...");
+	/******************** TEST 2 - Using all the available Processors ********************/
+	printf("------ Test 2 - Using all the available Processors ------\n");
+	Test(nProcs);
+	WaitForMultipleObjects(nProcs, hThreads, TRUE, INFINITE);
+
+	printf("\nThe sum is: %llu\nTime spent calculating: %llu microseconds\n", bigSum, GetCounter(startTime));
+	printf("-------------------- Test 2 has ended --------------------\n\n");
+	/*************************************************************************************/
+
+	/******************** TEST 3 - Using 10 times the number of Processors ********************/
+	printf("------ Test 3 - Using 10 times the number of Processors ------\n");
+	Test(nProcs * 10);
+	WaitForMultipleObjects(nProcs * 10, hThreads, TRUE, INFINITE);
+
+	printf("\nThe sum is: %llu\nTime spent calculating: %llu microseconds\n", bigSum, GetCounter(startTime));
+	printf("---------------------- Test 3 has ended ----------------------\n\n");
+	/******************************************************************************************/
+
+	printf("Press any key to exit...\n");
 	getchar();
 	return 0;
 }

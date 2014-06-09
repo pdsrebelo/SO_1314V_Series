@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "CounterUtils.h"
 
 #define MILLISECONDS 1000
