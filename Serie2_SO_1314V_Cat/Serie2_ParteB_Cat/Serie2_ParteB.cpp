@@ -14,16 +14,23 @@ tempos para as várias experiências.
 LONG bigArray[BIG_ARRAY_SIZE];
 LONG arraySum;
 
-void partialArraySum(void * arg){ // Função que vai estar associada a cada thread, para calcular o somatório de uma parte do array
+typedef struct array_positions_for_threads{
+	DWORD begin;
+	DWORD end;
+}ARRAY_POS,*PARRAY_POS;
+
+unsigned int __stdcall partialArraySum(void * arg){ // Função que vai estar associada a cada thread, para calcular o somatório de uma parte do array
 
 	// Now: Get the index values from the input arg!
 	DWORD i, start, end, accum = 0;
-	start = *(DWORD*)arg;
-	end = *((DWORD*)arg+sizeof(DWORD));
+	PARRAY_POS position = (PARRAY_POS)arg;
+	start = position->begin;
+	end = position->end;
 	for (i = start; i < end; i++){
 		accum += bigArray[i];
 	}
 	arraySum += accum;
+	return arraySum;
 }
 
 void Ex1_ParallelArraySum() {
@@ -59,6 +66,8 @@ void Ex1_ParallelArraySum() {
 
 	for (i = 0; i < nThreads; i++){	// For each cpu
 		DWORD begin, end;
+		PARRAY_POS arrayPositions = (PARRAY_POS)malloc(sizeof(ARRAY_POS));
+
 		begin = startIdx;
 		end = begin + arrayPositionsPerThread - 1;
 
@@ -70,7 +79,9 @@ void Ex1_ParallelArraySum() {
 
 		// Create the thread that will get the sum of the elements in the specified array bounds
 		// a struct is needed to pass the two arguments to the "partialArraySum" function
-		_beginthreadex(partialArraySum, 0, NULL, (void*)(begin, end), 0, NULL);
+		arrayPositions->end = end;
+		arrayPositions->begin = begin;
+		_beginthreadex(NULL, 0, partialArraySum, (VOID*)(arrayPositions), 0, NULL);
 	}
 	//	Determine  para  o  seu  sistema,  qual  o  número  de  threads  que 
 	//	proporciona  melhores  tempos  de execução do  cálculo do  somatório.Apresente as medições dos 
