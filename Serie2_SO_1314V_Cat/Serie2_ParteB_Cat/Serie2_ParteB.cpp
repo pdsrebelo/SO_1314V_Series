@@ -9,10 +9,10 @@ parte  alocado  a  uma  thread.  Determine  para  o  seu  sistema,  qual  o  núm
 proporciona  melhores  tempos  de execução do  cálculo do  somatório. Apresente as medições dos 
 tempos para as várias experiências.
 */
-#define BIG_ARRAY_SIZE 10 * 1048576 // e.g. Array size: 10 Megabytes... // Note: 1 Megabyte = 1,048,576 bytes = (1024*1024) bytes
+#define BIG_ARRAY_SIZE 1048576 // e.g. Array size: 3 Megabytes... // Note: 1 Megabyte = 1,048,576 bytes = (1024*1024) bytes
 
-LONG bigArray[BIG_ARRAY_SIZE];
-LONG arraySum;
+LONGLONG bigArray[BIG_ARRAY_SIZE];
+LONGLONG arraySum;
 
 typedef struct array_positions_for_threads{
 	DWORD begin;
