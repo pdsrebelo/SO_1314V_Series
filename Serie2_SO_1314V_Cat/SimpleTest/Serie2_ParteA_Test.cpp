@@ -71,23 +71,25 @@ void EX1_TEST() {
 /***
 SERIE 2 - PARTE A - TESTS FOR Ex.2
 ***/
-DWORD currentTest;
+DWORD currentEx2Test, totalEx2Tests;
+
 // function that call UtSleep
 void auxFunction_for_Ex2(UT_ARGUMENT time){
 	DWORD minimumTime = (DWORD)time, totalTests=3;	// Minimum time for the thread to Sleep
 	DWORD totalTimeWaiting = UtSleep(minimumTime);	// Expected return: >= 4000
 	printf("\n\n -> Expected: >= %d ... Returned: %d \n", minimumTime, totalTimeWaiting);
 	_ASSERTE(totalTimeWaiting >= minimumTime);
-	printf("\nPress any key to continue... (%d / %d Tests passed)", currentTest++, totalTests);
+	printf("\nPress any key to continue... (%d / %d Tests passed)", currentEx2Test++, totalTests);
 	getchar();
 }
 
+
+
 void EX2_TEST() {
-	DWORD totalTests = 4, currentTest = 1;
+	totalEx2Tests = 4, currentEx2Test = 1;
 	UtInit();
 	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 2 (UtSleep function) TEST -- ***  ::: \n"));
 
-	currentTest = 1;
 	// Wait more than 0 milliseconds
 	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)NULL);
 
@@ -109,27 +111,41 @@ void EX2_TEST() {
 /***
 SERIE 2 - PARTE A - TESTS FOR Ex.3
 ***/
+DWORD totalEx3Tests, currentEx3Test, ex3FunctionsFinished;
+BOOL test3MustEnd;
+void auxFunctionThatYields(UT_ARGUMENT arg){
+	while (ex3FunctionsFinished<totalEx3Tests) {
+		UtYield();
+	}
+}
 
 VOID veryUselessTimeConsumingFunction(UT_ARGUMENT millis){
-	UtSleep((DWORD)millis);
+	DWORD totalTimeSlept = UtSleep((DWORD)millis);
+	printf("\nExpected = %d ... Returned = %d",(DWORD)millis, totalTimeSlept);
+	_ASSERTE(totalTimeSlept>=(DWORD)millis);
+	printf("\nPress any key to continue... (%d / %d Tests passed)", currentEx3Test++, totalEx3Tests);
+	getchar();
+	ex3FunctionsFinished += 1;
 }
 
 void EX3_TEST() {
 	UtInit();
 	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 3 (CONTEXT SWITCH TIME) TEST -- ***  ::: \n"));
-	
-	HANDLE h1 = UtCreate((UT_FUNCTION)uselessFunctionExample, (UT_ARGUMENT)500);
-	HANDLE h2 = UtCreate((UT_FUNCTION)uselessFunctionExample, (UT_ARGUMENT)5000);
-	HANDLE h3 = UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)5000);
-	HANDLE h4 = UtCreate((UT_FUNCTION)uselessFunctionExample, (UT_ARGUMENT)500000);
-	HANDLE h5 = UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)5000);
-	
-	UtRun();
-	UtYield();
-	UtYield();
-	UtYield();
-	UtYield();
 
+	totalEx3Tests = 5; currentEx3Test = 1; ex3FunctionsFinished = 0;
+	test3MustEnd = FALSE;
+
+	// Create the thread that will wake the others in case they are ALL sleeping
+	UtCreate(auxFunctionThatYields, (UT_ARGUMENT)NULL);
+
+	UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)1000);		//1 s
+	UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)2000);		//2 s
+	UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)5000);		//5 s
+	UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)10000);	//10 s
+	UtCreate((UT_FUNCTION)veryUselessTimeConsumingFunction, (UT_ARGUMENT)12000);	//12 s
+
+	UtRun();
+	
 	_tprintf(_T("\n\n :::  *** -- EXERCICIO 3 - TEST COMPLETED -- ***  ::: \n"));
 	UtEnd();
 }

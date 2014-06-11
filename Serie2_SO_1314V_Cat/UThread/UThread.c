@@ -120,7 +120,7 @@ FORCEINLINE
 VOID Schedule() {
 	
 	PUTHREAD NextThread;
-	DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
+	//DWORD timeBeforeCall, timeAfterCall, totalTimeMillis;
 
 	if (!IsListEmpty(&SleepyQueue)){
 		UtCreate(UtSleepHelper, NULL);
@@ -129,22 +129,22 @@ VOID Schedule() {
 	NextThread = ExtractNextReadyThread();
 
 	// Register the time before calling the ContextSwitch function
-	timeBeforeCall = GetTickCount();
+	//timeBeforeCall = GetTickCount();
 
 	ContextSwitch(RunningThread, NextThread);
 
 	// Register the time after the call
-	timeAfterCall = GetTickCount();
+	//timeAfterCall = GetTickCount();
 
 	// The total time in milliseconds:
-	totalTimeMillis = timeAfterCall - timeBeforeCall;
+	//totalTimeMillis = timeAfterCall - timeBeforeCall;
 
 	// Print results
-	if (totalTimeMillis > 0){
+	/*if (totalTimeMillis > 0){
 		printf("\nContext Switch time = %lu ms", totalTimeMillis);
 		printf(" = %lu microseconds", totalTimeMillis * 1000);
 		printf(" = %lu nanoseconds", totalTimeMillis * 1000000);
-	}
+	}*/
 }
 
 ///////////////////////////////
@@ -276,7 +276,7 @@ DWORD UtSleep(DWORD sleepTimeInMillis){
 			UtDeactivate();												// Deactivate this running thread
 		}
 		else {
-			return timePassedInThisFunction;
+			return GetTickCount() - initialTime;
 		}
 	}
 }
