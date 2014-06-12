@@ -10,10 +10,10 @@ parte  alocado  a  uma  thread.  Determine  para  o  seu  sistema,  qual  o  núm
 proporciona  melhores  tempos  de execução do  cálculo do  somatório. Apresente as medições dos 
 tempos para as várias experiências.
 */
-#define BIG_ARRAY_SIZE 3*1048576 // e.g. Array size: 3 Megabytes... // Note: 1 Megabyte = 1,048,576 bytes = (1024*1024) bytes
+#define BIG_ARRAY_SIZE 3 * 1048576 // e.g. Array size: 3 Megabytes... // Note: 1 Megabyte = 1,048,576 bytes = (1024*1024) bytes
 #define NUMBER_OF_TESTS 4
-LONG bigArray[BIG_ARRAY_SIZE];
-LONG resultArray[NUMBER_OF_TESTS];
+LONGLONG bigArray[BIG_ARRAY_SIZE];
+LONGLONG resultArray[NUMBER_OF_TESTS];
 
 typedef struct array_positions_for_threads{
 	DWORD begin;
@@ -35,7 +35,7 @@ unsigned int __stdcall partialArraySum(void * arg){ // Função que vai estar asso
 	return resultArray[position->resultIdx];
 }
 
-void Ex1_ParallelArraySum(DWORD nThreads, DWORD resultIdx) {
+void Ex1_ParallelArraySum(LONG nThreads, DWORD resultIdx) {
 
 	DWORD i, arrayPositionsPerThread, extraPositions, 
 		startIdx = 0; // Indexes of the array elements' positions 
@@ -56,8 +56,7 @@ void Ex1_ParallelArraySum(DWORD nThreads, DWORD resultIdx) {
 			extraPositions -= 1;
 		}
 		
-		// Create the thread that will get the sum of the elements in the specified array bounds
-		// a struct is needed to pass the two arguments to the "partialArraySum" function
+		// Prepare the ARRAY_POS 
 		arrayPositions->end = end;
 		arrayPositions->begin = begin;
 		arrayPositions->resultIdx = resultIdx;
@@ -86,11 +85,26 @@ int main() {
 	nThreads = nCpu;
 
 	for (i = 0; i < NUMBER_OF_TESTS; i++){ // {(2^i) * number of processors} threads, per each CPU
+		DWORD j, countNTimes = 100, totalNanos = 0, averageTime, initTime, finalTime, totalTime;
+
 		nThreads = pow((double)2, i) * nCpu;
+
 		resultArray[i] = 0;
-		Ex1_ParallelArraySum(nThreads, i);
+		totalTime = 0;
+
+		for (j = 0; j < countNTimes; j++){
+			initTime = GetTickCount();
+			
+			Ex1_ParallelArraySum(nThreads, i);
+			
+			finalTime = GetTickCount();
+			totalTime += (finalTime - initTime);
+			//printf("  ... Took = %d ms\n", (finalTime - initTime));
+		}
+		averageTime = totalTime/countNTimes;
 		printf("\n::::: Test With %d threads :::::", nThreads);
-		printf("\nArray Sum = %d\n", resultArray[i]);
+		printf("\nArray Sum = %ul\n", resultArray[i]);
+		printf("Took (Average time calculated with %d tests) = %d ms\n", countNTimes, averageTime);
 	}
 
 	//TODO
