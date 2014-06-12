@@ -10,10 +10,11 @@ parte  alocado  a  uma  thread.  Determine  para  o  seu  sistema,  qual  o  núm
 proporciona  melhores  tempos  de execução do  cálculo do  somatório. Apresente as medições dos 
 tempos para as várias experiências.
 */
-#define BIG_ARRAY_SIZE 3 * 1048576 // e.g. Array size: 3 Megabytes... // Note: 1 Megabyte = 1,048,576 bytes = (1024*1024) bytes
-#define NUMBER_OF_TESTS 4
-LONGLONG bigArray[BIG_ARRAY_SIZE];
-LONGLONG resultArray[NUMBER_OF_TESTS];
+#define BIG_ARRAY_SIZE 1048576 // e.g. Array size: 3 Megabytes... // Note: 1 Megabyte = 1,048,576 bytes = (1024*1024) bytes
+#define NUMBER_OF_TESTS 10
+#define	MAX_NR_THREADS 1024
+LONGLONG bigArray [BIG_ARRAY_SIZE];
+LONGLONG resultArray [NUMBER_OF_TESTS];
 
 typedef struct array_positions_for_threads{
 	DWORD begin;
@@ -22,33 +23,34 @@ typedef struct array_positions_for_threads{
 }ARRAY_POS,*PARRAY_POS;
 
 unsigned int __stdcall partialArraySum(void * arg){ // Função que vai estar associada a cada thread, para calcular o somatório de uma parte do array
-	DWORD i, start, end, accum = 0;
+	LONGLONG i, accum;
 	PARRAY_POS position = (PARRAY_POS)arg;
+	
+	accum = 0;
 
-	start = position->begin;
-	end = position->end;
+	for (i = position->begin; i < position->end; i++)
+		accum = accum + bigArray[i];
 
-	for (i = start; i < end; i++){
-		accum += bigArray[i];
-	}
 	resultArray[position->resultIdx] += accum;
 	return resultArray[position->resultIdx];
 }
 
-void Ex1_ParallelArraySum(LONG nThreads, DWORD resultIdx) {
-
+void Ex1_ParallelArraySum(LONG nThreads, DWORD index) {
+	HANDLE workerThreads[MAX_NR_THREADS];
 	DWORD i, arrayPositionsPerThread, extraPositions, 
-		startIdx = 0; // Indexes of the array elements' positions 
+		initialTime, totalTime,
+		nextIdx = 0; // Indexes of the array elements' positions 
 
 	// Define the number of array positions that each thread will be responsible for counting
 	arrayPositionsPerThread = BIG_ARRAY_SIZE / nThreads;// Divide the work by the threads
 	extraPositions = BIG_ARRAY_SIZE % nThreads;			// The rest of the division result
 
+	initialTime = GetTickCount();
 	for (i = 0; i < nThreads; i++){
 		DWORD begin, end;
 		PARRAY_POS arrayPositions = (PARRAY_POS)malloc(sizeof(ARRAY_POS));
 
-		begin = startIdx;
+		begin = nextIdx;
 		end = begin + arrayPositionsPerThread;
 
 		if (extraPositions>0){
@@ -57,54 +59,41 @@ void Ex1_ParallelArraySum(LONG nThreads, DWORD resultIdx) {
 		}
 		
 		// Prepare the ARRAY_POS 
+		arrayPositions->resultIdx = index;
 		arrayPositions->end = end;
 		arrayPositions->begin = begin;
-		arrayPositions->resultIdx = resultIdx;
-
-		_beginthreadex(NULL, 0, partialArraySum, (VOID*)(arrayPositions), 0, NULL);
-
-		startIdx = end;
+		
+		workerThreads[i] = (HANDLE)_beginthreadex(NULL, 0, partialArraySum, (VOID*)(arrayPositions), 0, NULL);
+		nextIdx = end;
 	}
-
+	WaitForMultipleObjects(nThreads, workerThreads, TRUE, INFINITE);
+	totalTime = GetTickCount() - initialTime;
+	printf("\nTest#%d - Result=%d ---> Time = %d micros = %d nanos\n", 
+		index + 1, resultArray[index], totalTime * 1000, totalTime * 1000000);
 }
 
 int main() {
-
-	// First Test: nWorkingThreads = (2^0) * number of processors
-	SYSTEM_INFO sysinfo;
-	DWORD nCpu, nThreads;
+	DWORD nThreads, wThreadIdx;
 	int i;
 
 	// Initialize the array with the values to sum
 	for (i = 0; i < BIG_ARRAY_SIZE; i++){
-		bigArray[i] = rand() % 100 + 1;		// Random number between 1 and 100
+		bigArray[i] = 1;// rand() % 100 + 1;		// Random number between 1 and 100
 	}
 
-	GetSystemInfo(&sysinfo);
-	nCpu = sysinfo.dwNumberOfProcessors;
-	nThreads = nCpu;
-
-	for (i = 0; i < NUMBER_OF_TESTS; i++){ // {(2^i) * number of processors} threads, per each CPU
-		DWORD j, countNTimes = 100, totalNanos = 0, averageTime, initTime, finalTime, totalTime;
-
-		nThreads = pow((double)2, i) * nCpu;
-
+	// Start the tests
+	for (i = 0; i < NUMBER_OF_TESTS; i++){ // (2^i) threads ... max: 2^10 « 1024
+	
+		DWORD j, countNTimes = 10;
+		nThreads = pow((double)2, i); 
+		printf("\n::::: Starting Test #%d With %d threads :::::", i+1, nThreads);
+	
 		resultArray[i] = 0;
-		totalTime = 0;
-
-		for (j = 0; j < countNTimes; j++){
-			initTime = GetTickCount();
-			
-			Ex1_ParallelArraySum(nThreads, i);
-			
-			finalTime = GetTickCount();
-			totalTime += (finalTime - initTime);
-			//printf("  ... Took = %d ms\n", (finalTime - initTime));
-		}
-		averageTime = totalTime/countNTimes;
-		printf("\n::::: Test With %d threads :::::", nThreads);
-		printf("\nArray Sum = %ul\n", resultArray[i]);
-		printf("Took (Average time calculated with %d tests) = %d ms\n", countNTimes, averageTime);
+		
+		//for (j = 0; j < countNTimes; j++){
+		Ex1_ParallelArraySum(nThreads, i);
+		//}
+		getchar();
 	}
 
 	//TODO
