@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "BackupServer.h"
+#include "BackupServerDll.h"
 
 // Obter referência para o serviço (instância de BackupServer)
 HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){

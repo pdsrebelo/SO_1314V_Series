@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "..\BackupServerDll\BackupServer.h"
+#include "..\BackupServerDll\BackupServerDll.h"
 
 // Executado assim:
 // BackupServer service_name repository_path

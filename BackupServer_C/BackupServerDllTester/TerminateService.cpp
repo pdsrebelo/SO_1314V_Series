@@ -1,8 +1,8 @@
 #include "stdafx.h"
-#include "..\BackupServerDll\BackupServer.h"
+#include "..\BackupServerDll\BackupServerDll.h"
 
 // Executado assim:
-// BackupClient exit
+// TerminateService service_name
 
 int _tmain(int argc, _TCHAR* argv[])
 {

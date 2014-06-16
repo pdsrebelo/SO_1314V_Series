@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include <iostream>
 #include <tchar.h>
-#include "BackupServer.h"
+#include "BackupServerDll.h"
 #include <cstdio>
 
 HBACKUPSERVICE backupService;
