@@ -1,4 +1,9 @@
-﻿#include <windows.h>
+﻿#ifndef REPOSITORY_SERVER
+	#define REPOSITORY_SERVER __declspec(dllimport)
+#else
+	#define REPOSITORY_SERVER __declspec(dllexport)
+#endif
+#include <windows.h>
 #include <process.h>
 #include <stdio.h>
 
@@ -38,4 +43,4 @@ BOOL RestoreFileFunction(HBACKUPENTRY pentry);
 
 BOOL BackupFileFunction(HBACKUPENTRY pentry);
 
-BOOL SendNewRequest(HBACKUPSERVICE service, HBACKUPENTRY request);
+BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file);

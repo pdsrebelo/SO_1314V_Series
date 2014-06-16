@@ -3,7 +3,7 @@
 
 
 // Obter referência para o serviço (instância de BackupServer)
-HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
+HBACKUPSERVICE REPOSITORY_CLIENT OpenBackupService(TCHAR * serviceName){
 	HBACKUPSERVICE pService;
 	// Como a instância já está mapeada, basta usar OpenFileMapping
 	pService = (HBACKUPSERVICE) OpenFileMapping(PAGE_READWRITE, TRUE, serviceName);
@@ -11,32 +11,19 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 }
 
 // Enviar um pedido de Backup de um ficheiro.
-BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
-	HBACKUPENTRY pentry;
-	pentry->file = file;
-	pentry->clientProcessId = GetCurrentProcessId();
-	pentry->operation = backup_operation;
-	return SendNewRequest(service, pentry);
+BOOL REPOSITORY_CLIENT BackupFile(HBACKUPSERVICE service, TCHAR * file){
+	return SendNewRequest(service, GetCurrentProcessId(), backup_operation, file);
 }
 
 
 // Enviar um pedido de reposição de um ficheiro.
-BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
-	HBACKUPENTRY pentry;
-	pentry->file = file;
-	pentry->clientProcessId = GetCurrentProcessId();
-	pentry->operation = restore_operation;
-	return SendNewRequest(service, pentry);
+BOOL REPOSITORY_CLIENT RestoreFile(HBACKUPSERVICE service, TCHAR * file){
+	return SendNewRequest(service, GetCurrentProcessId(), restore_operation, file);
 }
 
 
 // Enviar pedido de terminação do serviço.
-BOOL StopBackupService(TCHAR * serviceName){
-	HBACKUPENTRY pentry;
-	HBACKUPSERVICE service;
-	pentry->file = NULL;
-	pentry->clientProcessId = GetCurrentProcessId();
-	pentry->operation = exit_operation;
-	service = (HBACKUPSERVICE)OpenFileMapping(PAGE_READWRITE, FALSE, serviceName);
-	return SendNewRequest(service, pentry);
+BOOL REPOSITORY_CLIENT StopBackupService(TCHAR * serviceName){
+	HBACKUPSERVICE service = (HBACKUPSERVICE)OpenFileMapping(PAGE_READWRITE, FALSE, serviceName);
+	return SendNewRequest(service, GetCurrentProcessId(), exit_operation, NULL);
 }

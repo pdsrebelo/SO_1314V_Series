@@ -87,7 +87,7 @@ BOOL BackupFileFunction(HBACKUPENTRY pentry){
 	return TRUE;
 }
 
-BOOL SendNewRequest(HBACKUPSERVICE service, HBACKUPENTRY request){
+BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file){
 	DWORD nReq;
 	WaitForSingleObject(service->hServiceExclusion, INFINITE);
 	nReq = service->nRequests;
@@ -95,7 +95,9 @@ BOOL SendNewRequest(HBACKUPSERVICE service, HBACKUPENTRY request){
 		ReleaseMutex(service->hServiceExclusion);
 		return FALSE;
 	}
-	service->requests[nReq] = *request;
+	service->requests[nReq].clientProcessId = clientProcId;
+	service->requests[nReq].operation = operation;
+	service->requests[nReq].file = file;
 	service->nRequests ++;
 	ReleaseMutex(service->hServiceExclusion);
 	return TRUE;
