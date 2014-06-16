@@ -1,11 +1,11 @@
 // BackupServerDllTester.cpp : Defines the entry point for the console application.
 //
-
 #include "stdafx.h"
 #include "..\BackupServerDll\BackupServerDll.h"
 
 // Executado assim:
 // BackupServer service_name repository_path
+
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -15,4 +15,3 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	return 0;
 }
-
