@@ -4,13 +4,6 @@
 	#define REPOSITORY_SERVER __declspec(dllexport)
 #endif
 
-#ifndef REPOSITORY_CLIENT
-	#define REPOSITORY_CLIENT __declspec(dllimport)
-#else 
-	#define REPOSITORY_CLIENT __declspec(dllexport)
-#endif
-
-
 #include <windows.h>
 #include <process.h>
 #include <stdio.h>
@@ -53,10 +46,10 @@ BOOL REPOSITORY_SERVER BackupFileFunction(HBACKUPENTRY pentry);
 
 BOOL REPOSITORY_SERVER SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file);
 
-HBACKUPSERVICE REPOSITORY_CLIENT OpenBackupService(TCHAR *serviceName);
+HBACKUPSERVICE REPOSITORY_SERVER OpenBackupService(TCHAR *serviceName);
 
-BOOL REPOSITORY_CLIENT BackupFile(HBACKUPSERVICE service, TCHAR * file);
+BOOL REPOSITORY_SERVER BackupFile(HBACKUPSERVICE service, TCHAR * file);
 
-BOOL REPOSITORY_CLIENT RestoreFile(HBACKUPSERVICE service, TCHAR * file);
+BOOL REPOSITORY_SERVER RestoreFile(HBACKUPSERVICE service, TCHAR * file);
 
-BOOL REPOSITORY_CLIENT StopBackupService(TCHAR * serviceName);
+BOOL REPOSITORY_SERVER StopBackupService(TCHAR * serviceName);
