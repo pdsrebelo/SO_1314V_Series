@@ -1,0 +1,1 @@
+#include "BackupServer.h"//TODO Instanciar o serviçoHBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){}BOOL CloseBackupService(HBACKUPSERVICE service){}//TODO Fazer cópias dos ficheiros à medida que os pedidos vão aparecendo.BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){}
