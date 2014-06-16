@@ -2,7 +2,7 @@
 #include "BackupClient.h"
 
 
-// TODO Obter referência para o serviço (instância de BackupServer)
+// Obter referência para o serviço (instância de BackupServer)
 HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	HBACKUPSERVICE pService;
 	// Como a instância já está mapeada, basta usar OpenFileMapping
@@ -10,28 +10,33 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	return pService;
 }
 
-//TODO Adicionar um pedido de Backup de um ficheiro.
+// Enviar um pedido de Backup de um ficheiro.
 BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
-	return FALSE;
+	HBACKUPENTRY pentry;
+	pentry->file = file;
+	pentry->clientProcessId = GetCurrentProcessId();
+	pentry->operation = backup_operation;
+	return SendNewRequest(service, pentry);
 }
 
 
-//TODO Adicionar um pedido de reposição de um ficheiro.
+// Enviar um pedido de reposição de um ficheiro.
 BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
-	return FALSE;
+	HBACKUPENTRY pentry;
+	pentry->file = file;
+	pentry->clientProcessId = GetCurrentProcessId();
+	pentry->operation = restore_operation;
+	return SendNewRequest(service, pentry);
 }
 
 
-//TODO Pedido de terminação do serviço.
+// Enviar pedido de terminação do serviço.
 BOOL StopBackupService(TCHAR * serviceName){
+	HBACKUPENTRY pentry;
 	HBACKUPSERVICE service;
-	if ((service = (HBACKUPSERVICE)OpenFileMapping(PAGE_READWRITE, FALSE, serviceName)) != NULL){
-		WaitForSingleObject(service->hServiceExclusion, INFINITE);
-		ReleaseMutex(service->hServiceExclusion);
-		UnmapViewOfFile(service);
-		CloseHandle(service);
-		return TRUE;
-	}
-	fprintf(stderr, "Unable to open memory mapping: ERROR %d\n", GetLastError());
-	return FALSE;
+	pentry->file = NULL;
+	pentry->clientProcessId = GetCurrentProcessId();
+	pentry->operation = exit_operation;
+	service = (HBACKUPSERVICE)OpenFileMapping(PAGE_READWRITE, FALSE, serviceName);
+	return SendNewRequest(service, pentry);
 }

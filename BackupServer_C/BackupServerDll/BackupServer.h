@@ -33,3 +33,9 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath);
 BOOL CloseBackupService(HBACKUPSERVICE service);
 
 BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor);
+
+BOOL RestoreFileFunction(HBACKUPENTRY pentry);
+
+BOOL BackupFileFunction(HBACKUPENTRY pentry);
+
+BOOL SendNewRequest(HBACKUPSERVICE service, HBACKUPENTRY request);

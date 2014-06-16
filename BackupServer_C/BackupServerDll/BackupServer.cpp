@@ -6,7 +6,7 @@
 
 HBACKUPSERVICE backupService;
 
-//TODO Instanciar o serviço
+// Instanciar o serviço
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	
 	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 0, serviceName);
@@ -20,7 +20,7 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	return backupService;
 }
 
-//TODO Copia ficheiro
+// Manda realizar a operacao escolhida, sobre o ficheiro
 BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	HBACKUPENTRY pRequest;
 	DWORD nRequests;
@@ -28,7 +28,7 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	WaitForSingleObject(service->hServiceExclusion, INFINITE);
 	{
 		nRequests = service->nRequests;
-		// Ir buscar o primeiro pedido, para mandar processar
+		// Ir buscar um pedido, para mandar processar
 		if (nRequests > 0){
 			pRequest = &(service->requests[nRequests]);
 			requestSuccess = processor(pRequest);
@@ -42,7 +42,13 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	return requestSuccess;
 }
 
-BOOL copyFileToRepository(HBACKUPENTRY pentry){
+BOOL RestoreFileFunction(HBACKUPENTRY pentry){
+
+	return FALSE;
+}
+
+//Copia ficheiro
+BOOL BackupFileFunction(HBACKUPENTRY pentry){
 	FILE * origin; FILE * destiny;
 	char auxBuffer[MAX_PATH];
 	char * separator = "/";
@@ -81,7 +87,7 @@ BOOL copyFileToRepository(HBACKUPENTRY pentry){
 	return TRUE;
 }
 
-BOOL NewRequest(HBACKUPSERVICE service, HBACKUPENTRY request){
+BOOL SendNewRequest(HBACKUPSERVICE service, HBACKUPENTRY request){
 	DWORD nReq;
 	WaitForSingleObject(service->hServiceExclusion, INFINITE);
 	nReq = service->nRequests;
