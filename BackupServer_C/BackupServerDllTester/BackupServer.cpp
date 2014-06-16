@@ -1,0 +1,18 @@
+// BackupServerDllTester.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include "..\BackupServerDll\BackupServer.h"
+
+// Executado assim:
+// BackupServer service_name repository_path
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	HBACKUPSERVICE pService = CreateBackupService(argv[1], argv[2]);
+	if (pService == NULL){
+		printf("\nERRO: Nao foi possivel criar o servidor de backup!");
+	}
+	return 0;
+}
+

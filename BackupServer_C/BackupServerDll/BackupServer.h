@@ -3,6 +3,14 @@
 #else
 	#define REPOSITORY_SERVER __declspec(dllexport)
 #endif
+
+#ifndef REPOSITORY_CLIENT
+	#define REPOSITORY_CLIENT __declspec(dllimport)
+#else 
+	#define REPOSITORY_CLIENT __declspec(dllexport)
+#endif
+
+
 #include <windows.h>
 #include <process.h>
 #include <stdio.h>
@@ -33,14 +41,22 @@ typedef struct BACKUP_SERVICE{
 	DWORD nRequests;						//número de pedidos existentes até ao momento (começa a 0. é usado como idx para os novos pedidos)	
 } BACKUPSERVICE, *HBACKUPSERVICE;
 
-HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath);
+HBACKUPSERVICE REPOSITORY_SERVER CreateBackupService(TCHAR * serviceName, TCHAR * repoPath);
 
-BOOL CloseBackupService(HBACKUPSERVICE service);
+BOOL REPOSITORY_SERVER CloseBackupService(HBACKUPSERVICE service);
 
-BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor);
+BOOL REPOSITORY_SERVER ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor);
 
-BOOL RestoreFileFunction(HBACKUPENTRY pentry);
+BOOL REPOSITORY_SERVER RestoreFileFunction(HBACKUPENTRY pentry);
 
-BOOL BackupFileFunction(HBACKUPENTRY pentry);
+BOOL REPOSITORY_SERVER BackupFileFunction(HBACKUPENTRY pentry);
 
-BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file);
+BOOL REPOSITORY_SERVER SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file);
+
+HBACKUPSERVICE REPOSITORY_CLIENT OpenBackupService(TCHAR *serviceName);
+
+BOOL REPOSITORY_CLIENT BackupFile(HBACKUPSERVICE service, TCHAR * file);
+
+BOOL REPOSITORY_CLIENT RestoreFile(HBACKUPSERVICE service, TCHAR * file);
+
+BOOL REPOSITORY_CLIENT StopBackupService(TCHAR * serviceName);
