@@ -87,7 +87,6 @@
   <ItemGroup>
     <ClCompile Include="BackupClient.cpp" />
     <ClCompile Include="BackupServer.cpp" />
-    <ClCompile Include="BackupService.cpp" />
     <ClCompile Include="dllmain.cpp">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

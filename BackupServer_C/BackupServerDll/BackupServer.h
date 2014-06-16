@@ -4,12 +4,10 @@
 
 #define MAX_REQUESTS_NR 128		//número máximo de pedidos
 
-typedef BOOL(*ProcessorFunc)(PBACKUPENTRY pentry);
-
 typedef enum BACKUP_OPERATION{	//tipos de operações que se podem realizar sobre os ficheiros
-	backup,
-	restore,
-	exit
+	backup_operation,
+	restore_operation,
+	exit_operation
 };
 
 typedef struct BACKUP_ENTRY{
@@ -18,16 +16,18 @@ typedef struct BACKUP_ENTRY{
 	HANDLE success;				//handle para indicar o resultado da operação
 	HANDLE unsuccess;			//handle para indicar o resultado da operação
 	BACKUP_OPERATION operation;	//tipo de operação a realizar
-}BACKUPENTRY, *PBACKUPENTRY;
+}BACKUPENTRY, *HBACKUPENTRY;
 
-typedef struct H_BACKUP_SERVICE{
+typedef BOOL(*ProcessorFunc)(HBACKUPENTRY pentry);
+
+typedef struct BACKUP_SERVICE{
+	TCHAR serviceName[128];
 	TCHAR fileStoragePath[128];				//caminho para a pasta onde irão ser guardadas as cópias dos ficheiros
 	BACKUPENTRY requests[MAX_REQUESTS_NR];
 	HANDLE hServiceExclusion;				//handle usado para garantir exclusão ao acesso aos dados do serviço
 	DWORD nRequests;						//número de pedidos existentes até ao momento (começa a 0. é usado como idx para os novos pedidos)
-	ProcessorFunc serverRequestProcessor;	//função do servidor, a chamar cada vez que se for processar um pedido
-}HBACKUPSERVICE, *PBACKUPSERVICE;
-
+	BOOL isOpen;	
+} BACKUPSERVICE, *HBACKUPSERVICE;
 
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath);
 
