@@ -42,9 +42,44 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	return requestSuccess;
 }
 
+// Repoe o ficheiro original (copia novamente)
 BOOL RestoreFileFunction(HBACKUPENTRY pentry){
+	FILE * origin; FILE * destiny;
+	char auxBuffer[MAX_PATH];
+	char * separator = "/";
+	char * repositoryPath = (char*)backupService->fileStoragePath;
 
-	return FALSE;
+	SIZE_T filePathSize = strlen(repositoryPath) + strlen(separator) + strlen((char*)pentry->file) + 1;
+	SIZE_T strSize = 0;
+
+	char * backedUpFileName = (char*)malloc(filePathSize);
+
+	strSize += strlen((char*)backupService->fileStoragePath) + 1;
+	strcpy_s(backedUpFileName, strSize, (char*)backupService->fileStoragePath);
+
+	strSize += strlen(separator);
+	strcat_s(backedUpFileName, strSize, separator);
+
+	strSize += strlen((char*)backupService->fileStoragePath);
+	strcat_s(backedUpFileName, strSize, (char*)pentry->file);
+
+	if (fopen_s(&origin, backedUpFileName, "rb") != 0){// abrir ficheiro origem para ler
+		printf("\nERRO... O ficheiro %s nao existe!", backedUpFileName);
+		return FALSE;
+	}
+
+	if (fopen_s(&destiny, (char*)pentry->file, "wb+") != 0){
+		printf("\nERRO... Nao foi possivel repôr o ficheiro %s ! Verifique se o caminho ainda existe!", pentry->file);
+		return FALSE;
+	}
+
+	while (fgets(auxBuffer, sizeof(auxBuffer), origin) != NULL){
+		fprintf_s(destiny, auxBuffer);
+	}
+
+	fclose(origin);
+	fclose(destiny);
+	return TRUE;
 }
 
 //Copia ficheiro
@@ -65,16 +100,16 @@ BOOL BackupFileFunction(HBACKUPENTRY pentry){
 	strSize += strlen(separator);
 	strcat_s(newFileName, strSize, separator);
 
-	strSize += strlen((char*)backupService->fileStoragePath);
+	strSize += strlen((char*)pentry->file);
 	strcat_s(newFileName, strSize, (char*)pentry->file);
 
-	if (fopen_s(&origin, (char*)backupService->fileStoragePath, "rb") != 0){// abrir ficheiro origem para ler
-		printf("\nERRO... O ficheiro %s nao existe!", backupService->fileStoragePath);
+	if (fopen_s(&origin, (char*)pentry->file, "rb") != 0){// abrir ficheiro origem para ler
+		printf("\nERRO... O ficheiro %s nao existe!", pentry->file);
 		return FALSE;
 	}
 
-	if (fopen_s(&destiny, (char*)pentry->file, "wb+") != 0){
-		printf("\nERRO... Nao foi possivel criar o ficheiro %s ! Verifique se o caminho existe!", pentry->file);
+	if (fopen_s(&destiny, newFileName, "wb+") != 0){
+		printf("\nERRO... Nao foi possivel criar o ficheiro %s ! Verifique se o caminho existe!", newFileName);
 		return FALSE;
 	}
 	
@@ -100,6 +135,21 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 	service->requests[nReq].file = file;
 	service->nRequests ++;
 	ReleaseMutex(service->hServiceExclusion);
+	
+	switch (operation)
+	{
+	case backup_operation:
+		ProcessNextEntry(service, BackupFileFunction);
+		break;
+	case restore_operation:
+		ProcessNextEntry(service, RestoreFileFunction);
+		break;
+	case exit_operation:
+		CloseBackupService(service);
+		break;
+	default:
+		break;
+	}
 	return TRUE;
 }
 
