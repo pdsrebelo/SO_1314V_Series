@@ -3,20 +3,37 @@
 #include <tchar.h>
 #include "BackupServerDll.h"
 #include <cstdio>
+#include <wchar.h>
 
 HBACKUPSERVICE backupService;
 
 // Instanciar o serviço
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
+	SIZE_T maxSize = sizeof(BACKUPSERVICE);
+	CHAR* mutexName = "mutex";
+	strcpy_s(mutexName, wcslen(serviceName)+1, (char*)serviceName);
 	
-	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 0, serviceName);
-	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, PAGE_READWRITE, 0, 0, sizeof(BACKUPSERVICE));
+	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_EXECUTE_READWRITE, 0, maxSize, serviceName);
+	if (hfMap == NULL){
+		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%s", GetLastError());
+		return NULL;
+	}
 
-	_tcscpy_s(backupService->fileStoragePath, repoPath);
+	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ, 0, 0, maxSize);
+	if (backupService == NULL){
+		printf("\nERRO: Nao foi possivel mapear em memoria! #%s",GetLastError());
+		return NULL;
+	}
+	
+	wcsncpy_s(backupService->fileStoragePath, repoPath, wcslen(repoPath)+1);
 	backupService->nRequests = 0;
-	_tcscpy_s(backupService->serviceName, serviceName);
-	backupService->hServiceExclusion = CreateMutex(NULL, FALSE, serviceName); // null para usar os security attributes por omissão
+	wcsncpy_s(backupService->serviceName, serviceName, wcslen(serviceName)+1);
+	backupService->hServiceExclusion = CreateMutex(NULL, FALSE, (LPCWSTR)mutexName); // null para usar os security attributes por omissão
 
+	if (backupService->hServiceExclusion){
+		printf("\nERRO: Nao foi possivel criar o mutex! #%s", GetLastError());
+		return NULL;
+	}
 	return backupService;
 }
 
@@ -42,34 +59,37 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	return requestSuccess;
 }
 
-// Repoe o ficheiro original (copia novamente)
-BOOL RestoreFileFunction(HBACKUPENTRY pentry){
+// Faz a reposicao (Restore) ou guarda uma copia do ficheiro (Backup), conforme o bool recebido.
+// backupNrestore = true -> Backup
+// backupNrestore = false -> Restore
+BOOL CopyFile(BOOL backupNrestore, HBACKUPENTRY copyRequest){
 	FILE * origin; FILE * destiny;
 	char auxBuffer[MAX_PATH];
 	char * separator = "/";
 	char * repositoryPath = (char*)backupService->fileStoragePath;
 
-	SIZE_T filePathSize = strlen(repositoryPath) + strlen(separator) + strlen((char*)pentry->file) + 1;
+	SIZE_T filePathSize = strlen(repositoryPath) + strlen(separator) + strlen((char*)copyRequest->file) + 1;
 	SIZE_T strSize = 0;
 
-	char * backedUpFileName = (char*)malloc(filePathSize);
+	char * repoFileName = (char*)malloc(filePathSize);
 
 	strSize += strlen((char*)backupService->fileStoragePath) + 1;
-	strcpy_s(backedUpFileName, strSize, (char*)backupService->fileStoragePath);
+	strcpy_s(repoFileName, strSize, (char*)backupService->fileStoragePath);
 
 	strSize += strlen(separator);
-	strcat_s(backedUpFileName, strSize, separator);
+	strcat_s(repoFileName, strSize, separator);
 
-	strSize += strlen((char*)backupService->fileStoragePath);
-	strcat_s(backedUpFileName, strSize, (char*)pentry->file);
+	strSize += strlen((char*)copyRequest->file);
+	strcat_s(repoFileName, strSize, (char*)copyRequest->file);
 
-	if (fopen_s(&origin, backedUpFileName, "rb") != 0){// abrir ficheiro origem para ler
-		printf("\nERRO... O ficheiro %s nao existe!", backedUpFileName);
+
+	if (fopen_s(&origin, backupNrestore?(char*)copyRequest->file:repoFileName, "rb") != 0){// abrir ficheiro origem para ler
+		printf("\nERRO... O ficheiro %s nao existe!", backupNrestore ? (char*)copyRequest->file : repoFileName);
 		return FALSE;
 	}
 
-	if (fopen_s(&destiny, (char*)pentry->file, "wb+") != 0){
-		printf("\nERRO... Nao foi possivel repôr o ficheiro %s ! Verifique se o caminho ainda existe!", pentry->file);
+	if (fopen_s(&destiny, backupNrestore ? repoFileName : (char*)copyRequest->file, "wb+") != 0){
+		printf("\nERRO... Nao foi possivel criar o ficheiro %s ! Verifique se o caminho existe!", backupNrestore ? repoFileName : (char*)copyRequest->file);
 		return FALSE;
 	}
 
@@ -82,44 +102,14 @@ BOOL RestoreFileFunction(HBACKUPENTRY pentry){
 	return TRUE;
 }
 
+// Repoe o ficheiro original (copia o ficheiro novamente, mas na ordem inversa)
+BOOL RestoreFileFunction(HBACKUPENTRY pentry){
+	return CopyFile(FALSE, pentry);
+}
+
 //Copia ficheiro
 BOOL BackupFileFunction(HBACKUPENTRY pentry){
-	FILE * origin; FILE * destiny;
-	char auxBuffer[MAX_PATH];
-	char * separator = "/";
-	char * repositoryPath = (char*)backupService->fileStoragePath;
-
-	SIZE_T filePathSize = strlen(repositoryPath) + strlen(separator) + strlen((char*)pentry->file) + 1; 
-	SIZE_T strSize = 0;
-
-	char * newFileName = (char*)malloc(filePathSize);
-
-	strSize += strlen((char*)backupService->fileStoragePath) + 1;
-	strcpy_s(newFileName, strSize, (char*)backupService->fileStoragePath);
-
-	strSize += strlen(separator);
-	strcat_s(newFileName, strSize, separator);
-
-	strSize += strlen((char*)pentry->file);
-	strcat_s(newFileName, strSize, (char*)pentry->file);
-
-	if (fopen_s(&origin, (char*)pentry->file, "rb") != 0){// abrir ficheiro origem para ler
-		printf("\nERRO... O ficheiro %s nao existe!", pentry->file);
-		return FALSE;
-	}
-
-	if (fopen_s(&destiny, newFileName, "wb+") != 0){
-		printf("\nERRO... Nao foi possivel criar o ficheiro %s ! Verifique se o caminho existe!", newFileName);
-		return FALSE;
-	}
-	
-	while (fgets(auxBuffer, sizeof(auxBuffer), origin) != NULL){
-		fprintf_s(destiny, auxBuffer);
-	}
-
-	fclose(origin);
-	fclose(destiny);
-	return TRUE;
+	return CopyFile(TRUE, pentry);
 }
 
 BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file){

@@ -5,8 +5,6 @@
 #endif
 
 #include <windows.h>
-#include <process.h>
-#include <stdio.h>
 
 #define MAX_REQUESTS_NR 128		//número máximo de pedidos
 
