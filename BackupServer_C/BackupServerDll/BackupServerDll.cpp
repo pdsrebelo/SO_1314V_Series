@@ -10,28 +10,26 @@ HBACKUPSERVICE backupService;
 // Instanciar o serviço
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	SIZE_T maxSize = sizeof(BACKUPSERVICE);
-	CHAR* mutexName = "mutex";
-	strcpy_s(mutexName, wcslen(serviceName)+1, (char*)serviceName);
 	
 	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_EXECUTE_READWRITE, 0, maxSize, serviceName);
 	if (hfMap == NULL){
-		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%s", GetLastError());
+		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%d", GetLastError());
 		return NULL;
 	}
 
 	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ, 0, 0, maxSize);
 	if (backupService == NULL){
-		printf("\nERRO: Nao foi possivel mapear em memoria! #%s",GetLastError());
+		printf("\nERRO: Nao foi possivel mapear em memoria! #%d",GetLastError());
 		return NULL;
 	}
 	
 	wcsncpy_s(backupService->fileStoragePath, repoPath, wcslen(repoPath)+1);
 	backupService->nRequests = 0;
 	wcsncpy_s(backupService->serviceName, serviceName, wcslen(serviceName)+1);
-	backupService->hServiceExclusion = CreateMutex(NULL, FALSE, (LPCWSTR)mutexName); // null para usar os security attributes por omissão
+	backupService->hServiceExclusion = CreateMutex(NULL, FALSE, (LPCWSTR)"serverMutex"); // null para usar os security attributes por omissão
 
-	if (backupService->hServiceExclusion){
-		printf("\nERRO: Nao foi possivel criar o mutex! #%s", GetLastError());
+	if (backupService->hServiceExclusion == NULL){
+		printf("\nERRO: Nao foi possivel criar o mutex! #%d", GetLastError());
 		return NULL;
 	}
 	return backupService;

@@ -13,5 +13,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	if (pService == NULL){
 		printf("\nERRO: Nao foi possivel criar o servidor de backup!");
 	}
+	printf("\nSucesso: O servidor foi criado!");
 	return 0;
 }
