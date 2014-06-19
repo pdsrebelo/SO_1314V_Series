@@ -15,7 +15,7 @@ typedef enum BACKUP_OPERATION{	//tipos de operações que se podem realizar sobr
 };
 
 typedef struct BACKUP_ENTRY{
-	TCHAR * file;				//identificação do ficheiro
+	TCHAR * file;			//identificação do ficheiro
 	DWORD clientProcessId;		//identificador do processo que originou o pedido
 	HANDLE success;				//handle para indicar o resultado da operação
 	HANDLE unsuccess;			//handle para indicar o resultado da operação
@@ -30,6 +30,7 @@ typedef struct BACKUP_SERVICE{
 	BACKUPENTRY requests[MAX_REQUESTS_NR];
 	HANDLE hServiceExclusion;				//handle usado para garantir exclusão ao acesso aos dados do serviço
 	DWORD nRequests;						//número de pedidos existentes até ao momento (começa a 0. é usado como idx para os novos pedidos)	
+	HANDLE serverProcess;					//handle para o processo que criou o servidor
 } BACKUPSERVICE, *HBACKUPSERVICE;
 
 HBACKUPSERVICE REPOSITORY_SERVER CreateBackupService(TCHAR * serviceName, TCHAR * repoPath);

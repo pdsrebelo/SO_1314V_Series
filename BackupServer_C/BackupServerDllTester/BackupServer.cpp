@@ -7,6 +7,7 @@
 // BackupServer service_name repository_path
 
 
+/*
 int _tmain(int argc, _TCHAR* argv[])
 {
 	HBACKUPSERVICE pService = CreateBackupService(argv[1], argv[2]);
@@ -16,3 +17,4 @@ int _tmain(int argc, _TCHAR* argv[])
 	printf("\nSucesso: O servidor foi criado!");
 	return 0;
 }
+*/

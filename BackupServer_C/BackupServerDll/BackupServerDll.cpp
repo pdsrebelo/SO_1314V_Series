@@ -10,14 +10,15 @@ HBACKUPSERVICE backupService;
 // Instanciar o serviço
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	SIZE_T maxSize = sizeof(BACKUPSERVICE);
-	
+	DWORD i = 0;
+
 	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_EXECUTE_READWRITE, 0, maxSize, serviceName);
 	if (hfMap == NULL){
 		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%d", GetLastError());
 		return NULL;
 	}
 
-	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ, 0, 0, maxSize);
+	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ|FILE_ALL_ACCESS, 0, 0, 0);
 	if (backupService == NULL){
 		printf("\nERRO: Nao foi possivel mapear em memoria! #%d",GetLastError());
 		return NULL;
@@ -27,6 +28,11 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	backupService->nRequests = 0;
 	wcsncpy_s(backupService->serviceName, serviceName, wcslen(serviceName)+1);
 	backupService->hServiceExclusion = CreateMutex(NULL, FALSE, (LPCWSTR)"serverMutex"); // null para usar os security attributes por omissão
+	backupService->serverProcess = GetCurrentProcess();
+
+	for (i = 0; i < MAX_REQUESTS_NR; i++){
+		backupService->requests[i].file = (wchar_t*)malloc(128);
+	}
 
 	if (backupService->hServiceExclusion == NULL){
 		printf("\nERRO: Nao foi possivel criar o mutex! #%d", GetLastError());
@@ -50,6 +56,10 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 			// Se houve sucesso no processamento do pedido, decrementar nº de pedidos
 			if (requestSuccess){
 				service->nRequests --;
+				printf("\nSucesso: Pedido processado!");
+			}
+			else{
+				printf("\nERRO: O pedido nao foi processado correctamente!");
 			}
 		}
 	}
@@ -112,17 +122,32 @@ BOOL BackupFileFunction(HBACKUPENTRY pentry){
 
 BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file){
 	DWORD nReq;
-	WaitForSingleObject(service->hServiceExclusion, INFINITE);
-	nReq = service->nRequests;
-	if (nReq >= MAX_REQUESTS_NR){ // se o nº máximo de pedidos foi alcançado, sair
-		ReleaseMutex(service->hServiceExclusion);
+	HANDLE hMutexDup;
+
+	if (file==NULL){
+		printf("\nERROR: No file was specified!");
 		return FALSE;
 	}
+
+	// Must duplicate the Mutex handle here
+	if (DuplicateHandle(service->serverProcess,
+		service->hServiceExclusion, GetCurrentProcess(), &hMutexDup, 0, FALSE, DUPLICATE_SAME_ACCESS) == NULL){
+			printf("\nERROR: Could not duplicate the server process' mutex handle! (%d)", GetLastError());
+			return FALSE;
+		}
+	
+	WaitForSingleObject(hMutexDup, INFINITE);//WaitForSingleObject(service->hServiceExclusion, INFINITE);
+	nReq = service->nRequests;
+	if (nReq >= MAX_REQUESTS_NR){ // se o nº máximo de pedidos foi alcançado, sair
+		ReleaseMutex(hMutexDup);	//ReleaseMutex(service->hServiceExclusion);
+		return FALSE;
+	}
+
 	service->requests[nReq].clientProcessId = clientProcId;
 	service->requests[nReq].operation = operation;
-	service->requests[nReq].file = file;
-	service->nRequests ++;
-	ReleaseMutex(service->hServiceExclusion);
+	wcsncpy_s(service->requests[nReq].file, wcslen(file) + 1,file, wcslen(file) + 1);
+	service->nRequests++; 
+	ReleaseMutex(hMutexDup);		//ReleaseMutex(service->hServiceExclusion);
 	
 	switch (operation)
 	{
@@ -144,7 +169,7 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 BOOL CloseBackupService(HBACKUPSERVICE service){
 
 	if (!UnmapViewOfFile((LPVOID)service)){
-		printf("\nUnmapViewOfFile failed = ERROR %s", GetLastError());
+		printf("\nUnmapViewOfFile failed = ERROR %d", GetLastError());
 		return FALSE;
 	}
 	CloseHandle(service);
@@ -156,8 +181,22 @@ BOOL CloseBackupService(HBACKUPSERVICE service){
 // Obter referência para o serviço (instância de BackupServer)
 HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	HBACKUPSERVICE pService;
-	// Como a instância já está mapeada, basta usar OpenFileMapping
-	pService = (HBACKUPSERVICE)OpenFileMapping(PAGE_READWRITE, TRUE, serviceName);
+	HANDLE hMapFile;
+
+	hMapFile = (HBACKUPSERVICE)OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, serviceName);
+	if (hMapFile == NULL)
+	{
+		printf("Could not open file mapping object (%d).\n",GetLastError());
+		return NULL;
+	}
+	
+	pService = (HBACKUPSERVICE) MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BACKUPSERVICE));
+	if (pService == NULL)
+	{
+		printf("Could not map view of file (%d).\n", GetLastError());
+		return NULL;
+	}
+
 	return pService;
 }
 
