@@ -4,6 +4,7 @@
 // Executado assim:
 // BackupServer service_name operation_type {filepath}*
 
+/*
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//supondo que ja foi criado um servidor com o nome indicado por argumento:
@@ -34,3 +35,5 @@ int _tmain(int argc, _TCHAR* argv[])
 	getchar();
 	return 0;
 }
+
+*/

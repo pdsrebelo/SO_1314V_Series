@@ -11,14 +11,14 @@ HBACKUPSERVICE backupService;
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	SIZE_T maxSize = sizeof(BACKUPSERVICE);
 	DWORD i = 0;
-	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, maxSize, serviceName);
+	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_EXECUTE_READWRITE, 0, maxSize, serviceName);
 
 	if (hfMap == NULL){
 		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%d", GetLastError());
 		return NULL;
 	}
 
-	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ, 0, 0, maxSize);
+	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_ALL_ACCESS, 0, 0, maxSize);
 	if (backupService == NULL){
 		printf("\nERRO: Nao foi possivel mapear em memoria! #%d",GetLastError());
 		return NULL;
@@ -231,6 +231,24 @@ BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
 
 // Enviar pedido de terminação do serviço.
 BOOL StopBackupService(TCHAR * serviceName){
-	HBACKUPSERVICE service = (HBACKUPSERVICE)OpenFileMapping(PAGE_READWRITE, FALSE, serviceName);
-	return SendNewRequest(service, GetCurrentProcessId(), exit_operation, NULL);
+	HBACKUPSERVICE pService;
+	BOOL success = FALSE;
+	HANDLE hService = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, serviceName);
+
+	if (GetLastError() == ERROR_ACCESS_DENIED)
+		printf("\nERRO ao chamar OpenFileMapping: Acesso negado!");
+
+	pService = (HBACKUPSERVICE)MapViewOfFile(hService, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BACKUPSERVICE));
+
+	if (pService == NULL){
+		printf("\nERRO: Nao foi possivel chamar a funcao MapViewOfFile com sucesso! (%d)",GetLastError());
+		return success = FALSE;
+	}
+
+	success = SendNewRequest(pService, GetCurrentProcessId(), exit_operation, NULL);
+
+	UnmapViewOfFile(pService);
+	CloseHandle(hService);
+
+	return success;
 }
