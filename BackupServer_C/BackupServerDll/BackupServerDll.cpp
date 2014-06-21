@@ -11,8 +11,8 @@ HBACKUPSERVICE backupService;
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	SIZE_T maxSize = sizeof(BACKUPSERVICE);
 	DWORD i = 0;
-
 	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, maxSize, serviceName);
+
 	if (hfMap == NULL){
 		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%d", GetLastError());
 		return NULL;
