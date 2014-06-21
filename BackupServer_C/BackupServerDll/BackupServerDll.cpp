@@ -141,8 +141,9 @@ BOOL BackupFileFunction(HBACKUPENTRY pentry){
 BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file){
 	DWORD nReq;
 	HANDLE hMutexDup;
+	BOOL success = FALSE;
 
-	if (file==NULL){
+	if (operation != exit_operation && file==NULL){
 		printf("\nERROR: No file was specified!");
 		return FALSE;
 	}
@@ -162,26 +163,27 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 	}
 	service->requests[nReq].clientProcessId = clientProcId;
 	service->requests[nReq].operation = operation;
-	wcsncpy_s(service->requests[nReq].file, file, wcslen(file) + 1);
+	if (operation!=exit_operation)
+		wcsncpy_s(service->requests[nReq].file, file, wcslen(file) + 1);
 	service->nRequests++; 
 	ReleaseMutex(hMutexDup);		//ReleaseMutex(service->hServiceExclusion);
 	
 	switch (operation)
 	{
 	case backup_operation:
-		ProcessNextEntry(service, BackupFileFunction);
+		success = ProcessNextEntry(service, BackupFileFunction);
 		break;
 	case restore_operation:
-		ProcessNextEntry(service, RestoreFileFunction);
+		success = ProcessNextEntry(service, RestoreFileFunction);
 		break;
 	case exit_operation:
-		CloseBackupService(service);
+		success = CloseBackupService(service);
 		break;
 	default:
 		break;
 	}
 	CloseHandle(hMutexDup);
-	return TRUE;
+	return success;
 }
 
 BOOL CloseBackupService(HBACKUPSERVICE service){
@@ -190,7 +192,6 @@ BOOL CloseBackupService(HBACKUPSERVICE service){
 		printf("\nUnmapViewOfFile failed = ERROR %d", GetLastError());
 		return FALSE;
 	}
-	CloseHandle(service);
 	return TRUE;
 }
 
