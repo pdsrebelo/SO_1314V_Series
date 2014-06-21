@@ -4,7 +4,7 @@
 // Executado assim:
 // TerminateService service_name
 
-
+/*
 int _tmain(int argc, _TCHAR* argv[])
 {
 	BOOL success = FALSE;
@@ -23,3 +23,4 @@ int _tmain(int argc, _TCHAR* argv[])
 	getchar();
 	return success;
 }
+*/

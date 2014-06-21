@@ -4,13 +4,19 @@
 // Executado assim:
 // BackupServer service_name operation_type {filepath}*
 
-/*
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//supondo que ja foi criado um servidor com o nome indicado por argumento:
 	_TCHAR* op = argv[2];
 	BOOL success = FALSE;
 	HBACKUPSERVICE pService = CreateBackupService(argv[1], (TCHAR*)"repositorioDoServidor");
+
+	if (argc < 3){
+		printf("\nNao ha argumentos de input suficientes para proceder!\nPrima qualquer tecla para terminar...");
+		getchar();
+		return 0;
+	}
 
 	pService = OpenBackupService(argv[1]);
 
@@ -35,5 +41,3 @@ int _tmain(int argc, _TCHAR* argv[])
 	getchar();
 	return 0;
 }
-
-*/

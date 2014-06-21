@@ -63,9 +63,11 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 			if (requestSuccess){
 				service->nRequests --;
 				printf("\nSucesso: Pedido processado!");
+				SetEvent(pRequest->success);
 			}
 			else{
 				printf("\nERRO: O pedido nao foi processado correctamente!");
+				SetEvent(pRequest->unsuccess);
 			}
 		}
 	}
@@ -166,21 +168,26 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 	if (operation!=exit_operation)
 		wcsncpy_s(service->requests[nReq].file, file, wcslen(file) + 1);
 	service->nRequests++; 
+
+	// Criar eventos manuais, que vao ser sinalizados caso a operacao tenha sucesso ou nao, respectivamente
+	service->requests[nReq].success = CreateEvent(NULL, TRUE, FALSE, NULL);
+	service->requests[nReq].unsuccess = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+	if (service->requests[nReq].success == NULL || service->requests[nReq].unsuccess == NULL){
+		printf("\nERRO ao tentar criar os eventos! (%d)",GetLastError());
+	}
+
 	ReleaseMutex(hMutexDup);		//ReleaseMutex(service->hServiceExclusion);
 	
 	switch (operation)
 	{
 	case backup_operation:
-		success = ProcessNextEntry(service, BackupFileFunction);
-		break;
+		success = ProcessNextEntry(service, BackupFileFunction); break;
 	case restore_operation:
-		success = ProcessNextEntry(service, RestoreFileFunction);
-		break;
+		success = ProcessNextEntry(service, RestoreFileFunction); break;
 	case exit_operation:
-		success = CloseBackupService(service);
-		break;
-	default:
-		break;
+		success = CloseBackupService(service); break;
+	default: success = false; break;
 	}
 	CloseHandle(hMutexDup);
 	return success;
