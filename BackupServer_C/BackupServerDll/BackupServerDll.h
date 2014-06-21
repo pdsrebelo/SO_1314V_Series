@@ -6,6 +6,7 @@
 
 #include <windows.h>
 
+#define STR_MAX_SIZE 128
 #define MAX_REQUESTS_NR 128		//número máximo de pedidos
 
 typedef enum BACKUP_OPERATION{	//tipos de operações que se podem realizar sobre os ficheiros
@@ -15,8 +16,8 @@ typedef enum BACKUP_OPERATION{	//tipos de operações que se podem realizar sobr
 };
 
 typedef struct BACKUP_ENTRY{
-	TCHAR * file;			//identificação do ficheiro
 	DWORD clientProcessId;		//identificador do processo que originou o pedido
+	TCHAR file[STR_MAX_SIZE];	//identificação do ficheiro
 	HANDLE success;				//handle para indicar o resultado da operação
 	HANDLE unsuccess;			//handle para indicar o resultado da operação
 	BACKUP_OPERATION operation;	//tipo de operação a realizar
@@ -25,8 +26,8 @@ typedef struct BACKUP_ENTRY{
 typedef BOOL(*ProcessorFunc)(HBACKUPENTRY pentry);
 
 typedef struct BACKUP_SERVICE{
-	TCHAR serviceName[128];
-	TCHAR fileStoragePath[128];				//caminho para a pasta onde irão ser guardadas as cópias dos ficheiros
+	TCHAR serviceName[STR_MAX_SIZE];
+	TCHAR fileStoragePath[STR_MAX_SIZE];				//caminho para a pasta onde irão ser guardadas as cópias dos ficheiros
 	BACKUPENTRY requests[MAX_REQUESTS_NR];
 	HANDLE hServiceExclusion;				//handle usado para garantir exclusão ao acesso aos dados do serviço
 	DWORD nRequests;						//número de pedidos existentes até ao momento (começa a 0. é usado como idx para os novos pedidos)	

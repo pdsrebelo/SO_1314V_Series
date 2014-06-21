@@ -12,13 +12,13 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	SIZE_T maxSize = sizeof(BACKUPSERVICE);
 	DWORD i = 0;
 
-	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_EXECUTE_READWRITE, 0, maxSize, serviceName);
+	HANDLE hfMap = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, maxSize, serviceName);
 	if (hfMap == NULL){
 		printf("\nERRO: Nao foi possivel chamar CreateFileMapping! #%d", GetLastError());
 		return NULL;
 	}
 
-	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ|FILE_ALL_ACCESS, 0, 0, 0);
+	backupService = (HBACKUPSERVICE)MapViewOfFile(hfMap, FILE_MAP_WRITE|FILE_MAP_READ, 0, 0, maxSize);
 	if (backupService == NULL){
 		printf("\nERRO: Nao foi possivel mapear em memoria! #%d",GetLastError());
 		return NULL;
@@ -30,10 +30,6 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	backupService->hServiceExclusion = CreateMutex(NULL, FALSE, (LPCWSTR)"serverMutex"); // null para usar os security attributes por omissão
 	backupService->serverProcess = GetCurrentProcess();
 
-	for (i = 0; i < MAX_REQUESTS_NR; i++){
-		backupService->requests[i].file = (wchar_t*)malloc(128);
-	}
-
 	if (backupService->hServiceExclusion == NULL){
 		printf("\nERRO: Nao foi possivel criar o mutex! #%d", GetLastError());
 		return NULL;
@@ -44,14 +40,24 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 // Manda realizar a operacao escolhida, sobre o ficheiro
 BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	HBACKUPENTRY pRequest;
-	DWORD nRequests;
+	HANDLE hMutexDup;
+	DWORD nRequests, reqIdx;
 	BOOL requestSuccess = FALSE; 
-	WaitForSingleObject(service->hServiceExclusion, INFINITE);
+
+	// Must duplicate the Mutex handle here
+	if (DuplicateHandle(service->serverProcess,
+		service->hServiceExclusion, GetCurrentProcess(), &hMutexDup, 0, FALSE, DUPLICATE_SAME_ACCESS) == NULL){
+		printf("\nERRO: Nao foi possivel duplicar o handle para o mutex! (%d)", GetLastError());
+		return FALSE;
+	}
+
+	WaitForSingleObject(hMutexDup, INFINITE);//WaitForSingleObject(service->hServiceExclusion, INFINITE);
 	{
 		nRequests = service->nRequests;
 		// Ir buscar um pedido, para mandar processar
 		if (nRequests > 0){
-			pRequest = &(service->requests[nRequests]);
+			reqIdx = nRequests-1;	// Ir buscar a entrada correspondente ao ultimo pedido
+			pRequest = &service->requests[reqIdx];
 			requestSuccess = processor(pRequest);
 			// Se houve sucesso no processamento do pedido, decrementar nº de pedidos
 			if (requestSuccess){
@@ -63,7 +69,8 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 			}
 		}
 	}
-	ReleaseMutex(service->hServiceExclusion);
+	ReleaseMutex(hMutexDup);//ReleaseMutex(service->hServiceExclusion);
+	CloseHandle(hMutexDup);
 	return requestSuccess;
 }
 
@@ -71,33 +78,44 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 // backupNrestore = true -> Backup
 // backupNrestore = false -> Restore
 BOOL CopyFile(BOOL backupNrestore, HBACKUPENTRY copyRequest){
+	
 	FILE * origin; FILE * destiny;
-	char auxBuffer[MAX_PATH];
-	char * separator = "/";
-	char * repositoryPath = (char*)backupService->fileStoragePath;
+	CHAR auxBuffer[MAX_PATH];
+	DWORD i, ofnIdx; //ofnIdx serve para copiar todos os chars para um char* local, com o nome do ficheiro original
+	CHAR* separator = "\\", *terminator = "\0";
+	SIZE_T sz, filePathSize = strlen((CHAR*)backupService->fileStoragePath) + strlen(separator) + strlen((CHAR*)copyRequest->file) + 1;
+	CHAR*repoFileName, *originalFileName;
+	
+	repoFileName = (CHAR*)malloc(filePathSize);
+	originalFileName = (CHAR*)malloc(strlen((CHAR*)copyRequest->file) + 1);
 
-	SIZE_T filePathSize = strlen(repositoryPath) + strlen(separator) + strlen((char*)copyRequest->file) + 1;
-	SIZE_T strSize = 0;
+	sz = strlen((CHAR*)backupService->fileStoragePath) + 1;
+	strcpy_s(repoFileName, sz, (CHAR*)backupService->fileStoragePath);
 
-	char * repoFileName = (char*)malloc(filePathSize);
+	sz += strlen(separator);
+	strcat_s(repoFileName, filePathSize, separator);
 
-	strSize += strlen((char*)backupService->fileStoragePath) + 1;
-	strcpy_s(repoFileName, strSize, (char*)backupService->fileStoragePath);
+	ofnIdx = 0;
+	for (i = 0; i < STR_MAX_SIZE; i++){
+		CHAR * part = (CHAR*)(copyRequest->file + i*sizeof(CHAR));
+		if (strcmp(part, terminator) == 0)
+			break;
+		sz++; ofnIdx++;
+		strcat_s(repoFileName, sz, part);
 
-	strSize += strlen(separator);
-	strcat_s(repoFileName, strSize, separator);
+		if (ofnIdx == 1)
+			strcpy_s(originalFileName, ofnIdx + 1, part);
+		else
+			strcat_s(originalFileName, ofnIdx + 1, part);
+	}
 
-	strSize += strlen((char*)copyRequest->file);
-	strcat_s(repoFileName, strSize, (char*)copyRequest->file);
-
-
-	if (fopen_s(&origin, backupNrestore?(char*)copyRequest->file:repoFileName, "rb") != 0){// abrir ficheiro origem para ler
-		printf("\nERRO... O ficheiro %s nao existe!", backupNrestore ? (char*)copyRequest->file : repoFileName);
+	if (fopen_s(&origin, backupNrestore?originalFileName : repoFileName, "rb") != 0){// abrir ficheiro origem para ler
+		printf("\nERRO... O ficheiro %s nao existe!", backupNrestore ? originalFileName : repoFileName);
 		return FALSE;
 	}
 
-	if (fopen_s(&destiny, backupNrestore ? repoFileName : (char*)copyRequest->file, "wb+") != 0){
-		printf("\nERRO... Nao foi possivel criar o ficheiro %s ! Verifique se o caminho existe!", backupNrestore ? repoFileName : (char*)copyRequest->file);
+	if (fopen_s(&destiny, backupNrestore ? repoFileName : originalFileName, "wb+") != 0){
+		printf("\nERRO... Nao foi possivel criar o ficheiro %s ! Verifique se o caminho existe!", backupNrestore ? repoFileName : originalFileName);
 		return FALSE;
 	}
 
@@ -142,10 +160,9 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 		ReleaseMutex(hMutexDup);	//ReleaseMutex(service->hServiceExclusion);
 		return FALSE;
 	}
-
 	service->requests[nReq].clientProcessId = clientProcId;
 	service->requests[nReq].operation = operation;
-	wcsncpy_s(service->requests[nReq].file, wcslen(file) + 1,file, wcslen(file) + 1);
+	wcsncpy_s(service->requests[nReq].file, file, wcslen(file) + 1);
 	service->nRequests++; 
 	ReleaseMutex(hMutexDup);		//ReleaseMutex(service->hServiceExclusion);
 	
@@ -163,6 +180,7 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 	default:
 		break;
 	}
+	CloseHandle(hMutexDup);
 	return TRUE;
 }
 
