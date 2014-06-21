@@ -51,7 +51,7 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 		return FALSE;
 	}
 
-	WaitForSingleObject(hMutexDup, INFINITE);//WaitForSingleObject(service->hServiceExclusion, INFINITE);
+	WaitForSingleObject(hMutexDup, INFINITE);
 	{
 		nRequests = service->nRequests;
 		// Ir buscar um pedido, para mandar processar
@@ -71,9 +71,29 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 			}
 		}
 	}
-	ReleaseMutex(hMutexDup);//ReleaseMutex(service->hServiceExclusion);
+	ReleaseMutex(hMutexDup);
 	CloseHandle(hMutexDup);
 	return requestSuccess;
+}
+
+// Espera o resultado de um pedido
+BOOL WaitForOperationResult(HBACKUPENTRY pEntry){
+	BOOL finished = FALSE, success = FALSE;
+	do{
+		if (WaitForSingleObject(pEntry->unsuccess, 1000) != WAIT_TIMEOUT){
+			finished = TRUE;
+			success = FALSE;
+			ResetEvent(pEntry->unsuccess);
+			printf("\n\nA OPERACAO FALHOU!\n");
+		}
+		else if (WaitForSingleObject(pEntry->success, 1000) != WAIT_TIMEOUT){
+			finished = TRUE;
+			success = TRUE;
+			ResetEvent(pEntry->success);
+			printf("\n\nA operacao foi concluida com sucesso.\n");
+		}
+	} while (!finished);
+	return success;
 }
 
 // Faz a reposicao (Restore) ou guarda uma copia do ficheiro (Backup), conforme o bool recebido.
@@ -142,6 +162,7 @@ BOOL BackupFileFunction(HBACKUPENTRY pentry){
 
 BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION operation, TCHAR * file){
 	DWORD nReq;
+	HBACKUPENTRY pEntry;
 	HANDLE hMutexDup;
 	BOOL success = FALSE;
 
@@ -157,43 +178,52 @@ BOOL SendNewRequest(HBACKUPSERVICE service, DWORD clientProcId, BACKUP_OPERATION
 			return FALSE;
 		}
 	
-	WaitForSingleObject(hMutexDup, INFINITE);//WaitForSingleObject(service->hServiceExclusion, INFINITE);
+	WaitForSingleObject(hMutexDup, INFINITE);
 	nReq = service->nRequests;
 	if (nReq >= MAX_REQUESTS_NR){ // se o nº máximo de pedidos foi alcançado, sair
-		ReleaseMutex(hMutexDup);	//ReleaseMutex(service->hServiceExclusion);
+		ReleaseMutex(hMutexDup);
 		return FALSE;
 	}
 	service->requests[nReq].clientProcessId = clientProcId;
 	service->requests[nReq].operation = operation;
-	if (operation!=exit_operation)
-		wcsncpy_s(service->requests[nReq].file, file, wcslen(file) + 1);
+	wcsncpy_s(service->requests[nReq].file, file, wcslen(file) + 1);
 	service->nRequests++; 
 
 	// Criar eventos manuais, que vao ser sinalizados caso a operacao tenha sucesso ou nao, respectivamente
-	service->requests[nReq].success = CreateEvent(NULL, TRUE, FALSE, NULL);
-	service->requests[nReq].unsuccess = CreateEvent(NULL, TRUE, FALSE, NULL);
+	service->requests[nReq].success = CreateEvent(NULL, TRUE, FALSE, L"successEvent");
+	service->requests[nReq].unsuccess = CreateEvent(NULL, TRUE, FALSE, L"unsuccessEvent");
 
 	if (service->requests[nReq].success == NULL || service->requests[nReq].unsuccess == NULL){
 		printf("\nERRO ao tentar criar os eventos! (%d)",GetLastError());
 	}
 
-	ReleaseMutex(hMutexDup);		//ReleaseMutex(service->hServiceExclusion);
+	ReleaseMutex(hMutexDup);
 	
 	switch (operation)
 	{
 	case backup_operation:
-		success = ProcessNextEntry(service, BackupFileFunction); break;
+		ProcessNextEntry(service, BackupFileFunction); break;
 	case restore_operation:
-		success = ProcessNextEntry(service, RestoreFileFunction); break;
-	case exit_operation:
-		success = CloseBackupService(service); break;
-	default: success = false; break;
+		ProcessNextEntry(service, RestoreFileFunction); break;
+	default: break;
 	}
+
 	CloseHandle(hMutexDup);
-	return success;
+	return WaitForOperationResult(&service->requests[nReq]);
 }
 
 BOOL CloseBackupService(HBACKUPSERVICE service){
+	
+	DWORD i;
+
+	WaitForSingleObject(service->hServiceExclusion, INFINITE);
+
+	// Notificar todos os pedidos pendentes do insucesso
+	for (i = service->nRequests; i>0; i--){
+		SetEvent(service->requests[i].unsuccess);
+	}
+	
+	ReleaseMutex(service->hServiceExclusion);
 
 	if (!UnmapViewOfFile((LPVOID)service)){
 		printf("\nUnmapViewOfFile failed = ERROR %d", GetLastError());
@@ -238,22 +268,18 @@ BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
 
 // Enviar pedido de terminação do serviço.
 BOOL StopBackupService(TCHAR * serviceName){
-	HBACKUPSERVICE pService;
-	BOOL success = FALSE;
+	
+	BOOL success = FALSE, finished = FALSE;
 	HANDLE hService = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, serviceName);
-
-	if (GetLastError() == ERROR_ACCESS_DENIED)
-		printf("\nERRO ao chamar OpenFileMapping: Acesso negado!");
-
-	pService = (HBACKUPSERVICE)MapViewOfFile(hService, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BACKUPSERVICE));
+	HBACKUPSERVICE pService = (HBACKUPSERVICE)MapViewOfFile(hService, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(BACKUPSERVICE));
 
 	if (pService == NULL){
 		printf("\nERRO: Nao foi possivel chamar a funcao MapViewOfFile com sucesso! (%d)",GetLastError());
 		return success = FALSE;
 	}
 
-	success = SendNewRequest(pService, GetCurrentProcessId(), exit_operation, NULL);
-
+	success = CloseBackupService(pService);// SendNewRequest(pService, GetCurrentProcessId(), exit_operation, NULL);
+	
 	UnmapViewOfFile(pService);
 	CloseHandle(hService);
 
