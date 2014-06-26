@@ -124,24 +124,29 @@ BOOL MEMINFO_API C_GetSystemMemInfo(_Out_ PSYSMEMINFO_C pSysMemInfo){
 }
 
 VOID MEMINFO_API C_PrintProcVirtualAddress(_In_ DWORD dwProcId){
-	HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
-	MEMORY_BASIC_INFORMATION memInfo; 
-	CHAR* lpAddress = 0;
-	
-	if (!VirtualQueryEx(hProc, lpAddress, &memInfo, sizeof(MEMORY_BASIC_INFORMATION))){
-		printf("\nERROR: ",GetLastError());
-		return;
+	HANDLE hProc = NULL;
+	MEMORY_BASIC_INFORMATION memInfo;
+	CHAR * lpAddress = 0;
+	DWORD nRegion = 1;
+
+	if (hProc = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, FALSE, dwProcId) == NULL){
+		printf("ERROR: %s\n", GetLastError());
+		return FALSE;
 	}
-	printf("\nProcess Virtual Address = 0x%x", lpAddress);
+
+	while (VirtualQueryEx(hProc, lpAddress, &memInfo, sizeof(MEMORY_BASIC_INFORMATION)) != 0){
+		lpAddress = (char*)memInfo.BaseAddress + memInfo.RegionSize;
+		if (memInfo.State == MEM_FREE)
+			continue;
+		printRegionInfo(nRegion, memInfo, hProc);
+		nRegion++;
+	}
 }
 
 BOOL MEMINFO_API C_GetProcMemInfo(_In_  DWORD  dwProcId, _Out_  PPROCMEMINFO_C pProcMemInfo){
 	HANDLE hProc = NULL;
 	MEMORYSTATUSEX status;
-	MEMORY_BASIC_INFORMATION memInfo;
 	PROCESS_MEMORY_COUNTERS procMemCtr;
-	CHAR * lpAddress = 0;
-	DWORD nRegion = 1;
 
 	printf("\n\n~~~~ INFORMACAO LOCAL DO PROCESSO ~~~~~");
 
@@ -158,16 +163,7 @@ BOOL MEMINFO_API C_GetProcMemInfo(_In_  DWORD  dwProcId, _Out_  PPROCMEMINFO_C p
 	printf("\nTotal de espaco de enderecamento virtual disponivel: %llu KiB = %llu MiB", status.ullAvailVirtual / KiloB, status.ullAvailVirtual / MegaB);
 	printf("\nDimensao do Working Set: %u KiB = %.2f MiB", procMemCtr.WorkingSetSize / KiloB, (double)procMemCtr.WorkingSetSize / MegaB);
 
-	while (VirtualQueryEx(hProc, lpAddress, &memInfo, sizeof(MEMORY_BASIC_INFORMATION)) != 0){
-		lpAddress = (char*)memInfo.BaseAddress + memInfo.RegionSize;
-		if (memInfo.State == MEM_FREE)
-			continue;
-		printRegionInfo(nRegion, memInfo, hProc);
-		nRegion++;
-	}
-
 	// Afectar a struct _out_
-	pProcMemInfo->pageSize = ppinfo->PageSize;
 	pProcMemInfo->processId = dwProcId;
 	pProcMemInfo->workingSetSize = procMemCtr.WorkingSetSize;
 	pProcMemInfo->totalVirtualSpace = status.ullTotalVirtual;

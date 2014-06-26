@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BackupServerDll", "BackupServerDll\BackupServerDll.vcxproj", "{CB957A38-047D-4C92-A725-F94844F0F9E1}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BackupServerDllTester", "BackupServerDllTester\BackupServerDllTester.vcxproj", "{070A4BB1-EF4C-403E-B2F6-D914677D058C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CB957A38-047D-4C92-A725-F94844F0F9E1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CB957A38-047D-4C92-A725-F94844F0F9E1}.Debug|Win32.Build.0 = Debug|Win32
+		{CB957A38-047D-4C92-A725-F94844F0F9E1}.Release|Win32.ActiveCfg = Release|Win32
+		{CB957A38-047D-4C92-A725-F94844F0F9E1}.Release|Win32.Build.0 = Release|Win32
+		{070A4BB1-EF4C-403E-B2F6-D914677D058C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{070A4BB1-EF4C-403E-B2F6-D914677D058C}.Debug|Win32.Build.0 = Debug|Win32
+		{070A4BB1-EF4C-403E-B2F6-D914677D058C}.Release|Win32.ActiveCfg = Release|Win32
+		{070A4BB1-EF4C-403E-B2F6-D914677D058C}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
