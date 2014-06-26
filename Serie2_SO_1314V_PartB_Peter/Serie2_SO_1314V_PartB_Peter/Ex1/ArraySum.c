@@ -68,6 +68,8 @@ int main(){
 	FillArray();
 	DWORD nProcs = GetNumberOfProcessors();
 
+	printf("Numero de processadores: %d\n", nProcs);
+
 	/******************** TEST 1 - Using just one Processor ********************/
 	printf("------ Test 1 - Using just one Processor ------\n");
 	Test(1);
