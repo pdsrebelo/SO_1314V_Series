@@ -66,13 +66,9 @@
   <ItemGroup>
     <ClCompile Include="Ex1\ArraySum.c" />
     <ClCompile Include="Ex1\CounterUtils.c" />
-    <ClCompile Include="Ex2\BackupClient.c" />
-    <ClCompile Include="Ex2\BackupServer.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Ex1\CounterUtils.h" />
-    <ClInclude Include="Ex2\BackupClient.h" />
-    <ClInclude Include="Ex2\BackupServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
