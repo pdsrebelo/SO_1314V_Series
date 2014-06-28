@@ -64,10 +64,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\BackupServer_P\BackupClient.c" />
+    <ClCompile Include="..\..\BackupServer_P\BackupServer.c" />
+    <ClCompile Include="..\..\BackupServer_P\BackupService.c" />
     <ClCompile Include="Ex1\ArraySum.c" />
     <ClCompile Include="Ex1\CounterUtils.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\BackupServer_P\BackupService.h" />
     <ClInclude Include="Ex1\CounterUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
