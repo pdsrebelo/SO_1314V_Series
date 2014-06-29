@@ -2,6 +2,11 @@
 #include "BackupService.h"
 
 int main(){
-	CreateBackupService("Nome", "cenas");
+	HBACKUPSERVICE backupService = CreateBackupService("Nome", "C:\\Users\\prebelo\\Desktop\\ISEL\\SO_1314V_Series\\BackupServer_P\\Repository");
+
+	while (ProcessNextEntry(backupService, NULL) == TRUE);
+
+	printf("++++ Server is Offline ++++\n");
+
 	return 0;
 }

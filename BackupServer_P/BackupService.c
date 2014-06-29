@@ -39,13 +39,25 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 
 	backupService = *(PHBACKUPSERVICE)pBuf;
 
+	backupService.repoPath = repoPath;
+	backupService.nRequests = 0;
+	backupService.putRequest = 0;
+	backupService.getRequest = 0;
+	backupService.isAlive = TRUE;
+
 	printf("\n++++ Server with Service: %s is online! ++++\n\n", serviceName);
+	printf("\n++++ Repository Path: %s ++++\n\n", repoPath);
 
 	return backupService;
 }
 
 BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
-	return FALSE;
+	if (service.nRequests == 0){
+		printf("\n++++ Server has nothing to do and it will sleep until there's work! ++++\n\n ");
+		WaitForSingleObject(service.hasWork, INFINITE);
+	}
+
+	return TRUE;
 }
 
 BOOL CloseBackupService(HBACKUPSERVICE service){
@@ -90,17 +102,43 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 		return;
 	}
 
-	//backupService->reqService = *(PHBACKUPSERVICE)pBuf;
+	printf("\n++++ Found the Server with service name: %s ++++\n", serviceName);
+
+	//backupService.reqService = *(PHBACKUPSERVICE)pBuf;
 
 	return backupService;
 }
 
 BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
-	return FALSE;
+	if (service.putRequest == service.getRequest){
+		printf("\n++++ The Server is currently full with requests, can't add anymore %s ++++\n");
+		return FALSE;
+	}
+
+	BACKUPENTRY backupEntry = service.requests[service.putRequest++];
+
+	SetEvent(service.hasWork);
+
+	/*if (!CopyFile(
+		file,				// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
+		service.repoPath,	// _In_  LPCTSTR lpNewFileName
+		FALSE				// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
+		))
+	{
+		printf("Couldn't copy the file. Error %s", GetLastError());
+		return FALSE;
+	}*/
+
+
+	return TRUE;
 }
 
 BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
-	return FALSE;
+	if (service.putRequest == service.getRequest){
+		printf("\n++++ The Server is currently full with requests, can't add anymore %s ++++\n");
+		return FALSE;
+	}
+	return TRUE;
 }
 
 BOOL StopBackupService(TCHAR * serviceName){
