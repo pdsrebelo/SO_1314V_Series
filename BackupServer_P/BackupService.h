@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef BACKUPSERVICE_DLL
 #define BACKUPSERVICE_API __declspec(dllexport)

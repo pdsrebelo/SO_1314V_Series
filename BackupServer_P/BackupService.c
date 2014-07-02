@@ -57,6 +57,8 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 }
 
 BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
+	BACKUPENTRY backupEntry;
+
 	if (service.isAlive == FALSE){
 		printf("\n++++ Server is no longer working! ++++\n\n ");
 		return FALSE;
@@ -70,48 +72,48 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	// If the server is online and has work to do, then it should process the next entry on requests
 	WaitForSingleObject(service.rqstsMutex, INFINITE);
 	{
-		BACKUPENTRY backupEntry = service.requests[service.getRequest++];
-
-		switch (backupEntry.operation){
-			case Backup:
-				if (!CopyFile(
-					backupEntry.clientFolder,	// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
-					service.repoPath,			// _In_  LPCTSTR lpNewFileName
-					FALSE						// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
-					))
-				{
-					printf("Couldn't copy the file. Error %s", GetLastError());
-					SetEvent(backupEntry.hArray[1]); // and return TRUE; ?
-				}
-				else{
-					SetEvent(backupEntry.hArray[0]); // and return TRUE; ?
-				}
-				break;
-			case Restore:
-				if (!CopyFile(
-					service.repoPath,			// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
-					backupEntry.clientFolder,	// _In_  LPCTSTR lpNewFileName
-					FALSE						// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
-					))
-				{
-					printf("Couldn't copy the file. Error %s", GetLastError());
-					SetEvent(backupEntry.hArray[1]); // and return FALSE; ?
-				}
-				else{
-					SetEvent(backupEntry.hArray[0]); // and return TRUE; ?
-				}
-				break;
-			case Exit:
-				// TODO
-				break;
-			default:
-				printf("An error has occurred: %s", GetLastError());
-				return FALSE;
-		}
-
-		ResetEvent(service.isFull); // If a request was replied, then the server has at least one slot available
+		backupEntry = service.requests[service.getRequest++];
 	}
 	ReleaseMutex(service.rqstsMutex);
+	
+	switch (backupEntry.operation){
+		case Backup:
+			if (!CopyFile(
+				backupEntry.clientFolder,	// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
+				service.repoPath,			// _In_  LPCTSTR lpNewFileName
+				FALSE						// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
+				))
+			{
+				printf("Couldn't copy the file. Error %s", GetLastError());
+				SetEvent(backupEntry.hArray[1]); // and return TRUE; ?
+			}
+			else{
+				SetEvent(backupEntry.hArray[0]); // and return TRUE; ?
+			}
+			break;
+		case Restore:
+			if (!CopyFile(
+				service.repoPath,			// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
+				backupEntry.clientFolder,	// _In_  LPCTSTR lpNewFileName
+				FALSE						// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
+				))
+			{
+				printf("Couldn't copy the file. Error %s", GetLastError());
+				SetEvent(backupEntry.hArray[1]); // and return FALSE; ?
+			}
+			else{
+				SetEvent(backupEntry.hArray[0]); // and return TRUE; ?
+			}
+			break;
+		case Exit:
+			// TODO
+			break;
+		default:
+			printf("An error has occurred: %s", GetLastError());
+			return FALSE;
+	}
+
+	ResetEvent(service.isFull); // If a request was replied, then the server has at least one slot available
 
 	return TRUE;
 }
@@ -173,7 +175,6 @@ BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
 		printf("\n+++++ Server is offline, declining this request! +++++\n");
 		return FALSE;
 	}
-
 
 	// Is it better to put WaitForSingleObject(rqstsMutexDup, INFINITE) here?
 	
@@ -242,7 +243,8 @@ BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
 		2,						// number of objects in array
 		&backupEntry.hArray,	// array of objects
 		FALSE,					// wait for any object
-		INFINITE);				// Infinite wait
+		INFINITE				// Infinite wait
+	);
 
 	switch (wfmoRet)
 	{
@@ -259,12 +261,12 @@ BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
 
 		case WAIT_TIMEOUT:
 			printf("Wait timed out.\n");
-			break;
+			return FALSE;
 
 		// Return value is invalid.
 		default:
 			printf("Wait error: %d\n", GetLastError());
-			ExitProcess(0);
+			return FALSE;
 	}
 
 	return TRUE;
@@ -351,7 +353,8 @@ BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
 		2,						// number of objects in array
 		&backupEntry.hArray,	// array of objects
 		FALSE,					// wait for any object
-		INFINITE);				// Infinite wait
+		INFINITE				// Infinite wait
+	);
 
 	switch (wfmoRet)
 	{
@@ -368,17 +371,20 @@ BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
 
 		case WAIT_TIMEOUT:
 			printf("Wait timed out.\n");
+			return FALSE;
 			break;
 
 			// Return value is invalid.
 		default:
 			printf("Wait error: %d\n", GetLastError());
-			ExitProcess(0);
+			return FALSE;
 	}
 
 	return TRUE;
 }
 
 BOOL StopBackupService(TCHAR * serviceName){
+
+
 	return FALSE;
 }
