@@ -31,16 +31,21 @@ dados:
 typedef struct{
 	TCHAR * file;
 	DWORD clientProcID;
-	HANDLE sucess;
-	HANDLE failure;
+	/*HANDLE sucess;
+	HANDLE failure;*/
+	HANDLE hArray[2]; // hArray[0]= success; hArray[1] = failure; 
 	enum OPERATION operation;
+	TCHAR *clientFolder; // For restore purposes
 }BACKUPENTRY, *PBACKUPENTRY;
 
 typedef struct{
 	TCHAR* repoPath;
 	HANDLE hMapFile;
 	HANDLE hasWork;
+	HANDLE isFull;
+	HANDLE rqstsMutex;
 	BACKUPENTRY requests[MAX_REQUESTS];
+	DWORD processID;
 	DWORD nRequests;
 	DWORD putRequest;
 	DWORD getRequest;

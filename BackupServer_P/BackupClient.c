@@ -2,7 +2,7 @@
 #include "BackupService.h"
 
 int main(){
-	HBACKUPSERVICE service = OpenBackupService("Nome");
+	HBACKUPSERVICE service = OpenBackupService("BackupServer");
 	
 	if (!BackupFile(service, NULL)){
 		printf("Error!\n");
