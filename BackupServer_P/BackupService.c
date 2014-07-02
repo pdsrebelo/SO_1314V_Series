@@ -3,6 +3,7 @@
 /****************************** Server *********************************/
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	LPCTSTR pBuf;
+	BOOL hasError = FALSE;
 
 	HBACKUPSERVICE backupService = *(PHBACKUPSERVICE)malloc(sizeof(HBACKUPSERVICE));
 
@@ -16,42 +17,46 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 		0,
 		sizeof(backupService),
 		serviceName
-		);
+	);
 
 	if (backupService.hMapFile == NULL){
 		printf("Could not create file mapping object (%d).\n", GetLastError());
-		return;
+		hasError = TRUE;
 	}
 
-	pBuf = (LPCTSTR)MapViewOfFile(
-		backupService.hMapFile,			//_In_  HANDLE	hFileMappingObject,
-		FILE_MAP_ALL_ACCESS,			//_In_  DWORD	dwDesiredAccess,
-		0,								//_In_  DWORD	dwFileOffsetHigh,
-		0,								//_In_  DWORD	dwFileOffsetLow,
-		sizeof(backupService)			//_In_  SIZE_T	dwNumberOfBytesToMap
-		);
+	if (hasError == FALSE){
+		pBuf = (LPCTSTR)MapViewOfFile(
+			backupService.hMapFile,			//_In_  HANDLE	hFileMappingObject,
+			FILE_MAP_ALL_ACCESS,			//_In_  DWORD	dwDesiredAccess,
+			0,								//_In_  DWORD	dwFileOffsetHigh,
+			0,								//_In_  DWORD	dwFileOffsetLow,
+			sizeof(backupService)			//_In_  SIZE_T	dwNumberOfBytesToMap
+			);
 
-	if (pBuf == NULL){
-		printf("Could not create file mapping object (%d).\n", GetLastError());
-		CloseHandle(backupService.hMapFile);
-		return;
+		if (pBuf == NULL){
+			printf("Could not create file mapping object (%d).\n", GetLastError());
+			CloseHandle(backupService.hMapFile);
+			hasError = TRUE;
+		}
+
+		if (hasError == FALSE){
+			backupService = *(PHBACKUPSERVICE)pBuf;
+
+			backupService.repoPath = repoPath;
+			backupService.nRequests = 0;
+			backupService.putRequest = 0;
+			backupService.getRequest = 0;
+			backupService.isAlive = TRUE;
+			backupService.processID = GetCurrentProcessId();
+
+			backupService.rqstsMutex = CreateMutex(NULL, FALSE, NULL);		// Mutex sem nome que trata de lidar com a lista de requestss
+			backupService.hasWork = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
+			backupService.isFull = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
+
+			printf("\n++++ Server with Service: %s is online! ++++\n\n", serviceName);
+			printf("\n++++ Repository Path: %s ++++\n\n", repoPath);
+		}
 	}
-
-	backupService = *(PHBACKUPSERVICE)pBuf;
-
-	backupService.repoPath = repoPath;
-	backupService.nRequests = 0;
-	backupService.putRequest = 0;
-	backupService.getRequest = 0;
-	backupService.isAlive = TRUE;
-	backupService.processID = GetCurrentProcessId();
-
-	backupService.rqstsMutex = CreateMutex(NULL, FALSE, NULL);		// Mutex sem nome que trata de lidar com a lista de requestss
-	backupService.hasWork = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
-	backupService.isFull = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
-
-	printf("\n++++ Server with Service: %s is online! ++++\n\n", serviceName);
-	printf("\n++++ Repository Path: %s ++++\n\n", repoPath);
 
 	return backupService;
 }
@@ -127,6 +132,8 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	HBACKUPSERVICE backupService;
 	LPTSTR pBuf;
 
+	BOOL hasError = FALSE;
+
 	backupService = *((PHBACKUPSERVICE)malloc(sizeof(HBACKUPSERVICE)));
 
 	/*
@@ -142,26 +149,30 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 		serviceName);
 
 	if (backupService.hMapFile == NULL){
-		printf("1. Could not create file mapping object (%d).\n", GetLastError());
-		return;
+		printf("Could not create file mapping object (%d).\n", GetLastError());
+		hasError = TRUE;
 	}
 
-	pBuf = (LPTSTR)MapViewOfFile(backupService.hMapFile,
-		FILE_MAP_ALL_ACCESS,
-		0,
-		0,
-		sizeof(backupService));
+	if (hasError == FALSE){
+		pBuf = (LPTSTR)MapViewOfFile(backupService.hMapFile,
+			FILE_MAP_ALL_ACCESS,
+			0,
+			0,
+			sizeof(backupService));
 
-	if (pBuf == NULL)
-	{
-		printf("2. Could not create file mapping object (%d).\n", GetLastError());
-		CloseHandle(backupService.hMapFile);
-		return;
+		if (pBuf == NULL)
+		{
+			printf("Could not create file mapping object (%d).\n", GetLastError());
+			CloseHandle(backupService.hMapFile);
+			hasError = TRUE;
+		}
+
+		if (hasError == FALSE){
+			backupService = *(PHBACKUPSERVICE)pBuf;
+
+			printf("\n++++ Found the Server with service name: %s ++++\n", serviceName);
+		}
 	}
-
-	backupService = *(PHBACKUPSERVICE)pBuf;
-
-	printf("\n++++ Found the Server with service name: %s ++++\n", serviceName);
 
 	return backupService;
 }
@@ -241,7 +252,7 @@ BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
 
 	wfmoRet = WaitForMultipleObjects(
 		2,						// number of objects in array
-		&backupEntry.hArray,	// array of objects
+		backupEntry.hArray,	// array of objects
 		FALSE,					// wait for any object
 		INFINITE				// Infinite wait
 	);
@@ -351,7 +362,7 @@ BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
 
 	wfmoRet = WaitForMultipleObjects(
 		2,						// number of objects in array
-		&backupEntry.hArray,	// array of objects
+		backupEntry.hArray,	// array of objects
 		FALSE,					// wait for any object
 		INFINITE				// Infinite wait
 	);
@@ -384,7 +395,5 @@ BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
 }
 
 BOOL StopBackupService(TCHAR * serviceName){
-
-
 	return FALSE;
 }
