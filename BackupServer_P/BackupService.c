@@ -75,7 +75,7 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	WaitForSingleObject(service->rqstsMutex, INFINITE);
 	{
 		backupEntry = service->requests[service->getRequest];
-		service->getRequest = service->getRequest == MAX_REQUESTS ? 0 : service->getRequest++;
+		service->getRequest = service->getRequest == MAX_REQUESTS ? 0 : service->getRequest+1;
 	}
 	ReleaseMutex(service->rqstsMutex);
 	
@@ -174,7 +174,6 @@ BOOL FileOperation(HBACKUPSERVICE service, TCHAR * file, enum OPERATION operatio
 	HANDLE rqstsMutexDup, hasWorkDup, isFullDup;
 	PBACKUPENTRY backupEntry;
 	DWORD wfmoRet;
-	TCHAR cenas[200];
 
 	if (service->isAlive == FALSE){
 		printf("\n+++++ Server is offline, declining this request! +++++\n");
@@ -231,7 +230,7 @@ BOOL FileOperation(HBACKUPSERVICE service, TCHAR * file, enum OPERATION operatio
 	WaitForSingleObject(rqstsMutexDup, INFINITE);
 	{
 		backupEntry = &service->requests[service->putRequest];
-		service->putRequest = service->putRequest == MAX_REQUESTS ? 0 : service->putRequest++;
+		service->putRequest = service->putRequest == MAX_REQUESTS ? 0 : service->putRequest+1;
 
 		backupEntry->clientProcID = GetCurrentProcessId();
 		backupEntry->operation = operation;
