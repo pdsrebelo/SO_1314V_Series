@@ -41,5 +41,8 @@ int main(int argc, char* argv[]){
 
 	printf("\n++++ Client is Offline ++++\n");
 
+	getchar();
+	printf("\nPress any key to leave...\n");
+
 	return 0;
 }

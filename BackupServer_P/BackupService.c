@@ -6,6 +6,7 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	HBACKUPSERVICE backupService;
 	HANDLE hMapFile;
 	LPCTSTR pBuf;
+	DWORD i;
 
 	/* Um processo (servidor) instancia o serviço (CreateBackupService), ficando responsável
 	por realizar as cópias dos ficheiros à medida que os pedidos vão aparecendo (ProcessNextEntry) */
@@ -51,6 +52,11 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 	backupService->hasWork = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
 	backupService->isFull = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
 
+	for (i = 0; i < MAX_REQUESTS; i++){
+		backupService->requests[i].hArray[0] = CreateEvent(NULL, FALSE, FALSE, "success");	// Auto-Reset Event (FALSE), com nome ("success")
+		backupService->requests[i].hArray[1] = CreateEvent(NULL, FALSE, FALSE, "failure");	// Auto-Reset Event (FALSE), com nome ("failure")
+	}
+
 	printf("\n++++ Server with Service: %s is online! ++++\n\n", serviceName);
 	printf("\n++++ Repository Path: %s ++++\n\n", repoPath);
 
@@ -82,12 +88,12 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	switch (backupEntry.operation){
 		case Backup:
 			if (!CopyFile(
-				backupEntry.file,	// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
-				service->repoPath,	// _In_  LPCTSTR lpNewFileName
-				FALSE				// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
+				backupEntry.file,		// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
+				service->repoPath,		// _In_  LPCTSTR lpNewFileName
+				FALSE					// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
 				))
 			{
-				printf("Couldn't copy the file. Error %d", GetLastError());
+				printf("\nCouldn't copy the file. Error %d\n", GetLastError());
 				SetEvent(backupEntry.hArray[1]); // and return TRUE; ?
 			}
 			else{
@@ -101,7 +107,7 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 				FALSE				// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
 				))
 			{
-				printf("Couldn't copy the file. Error %d", GetLastError());
+				printf("\nCouldn't copy the file. Error %d\n", GetLastError());
 				SetEvent(backupEntry.hArray[1]); // and return FALSE; ?
 			}
 			else{
@@ -130,13 +136,6 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	HBACKUPSERVICE backupService;
 	HANDLE hMapFile;
 	LPTSTR pBuf;
-
-	/*
-	Os clientes, que não poderão ser mais do que MAX_CLIENTS em simultâneo, encontram o espaço de memória
-	partilhada pelo nome atribuído. O espaço de memória partilhada contém um array de MAX_CLIENTS posições,
-	em que cada entrada contém uma instância de PBACKUPENTRY e os elementos necessários para a sincronização 
-	entre o servidor e um cliente específico.
-	*/
 
 	hMapFile = OpenFileMapping(
 		FILE_MAP_ALL_ACCESS,
@@ -171,7 +170,8 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 }
 
 BOOL FileOperation(HBACKUPSERVICE service, TCHAR * file, enum OPERATION operation){
-	HANDLE rqstsMutexDup, hasWorkDup, isFullDup;
+	HANDLE serverProcess, currentProcess, rqstsMutexDup, hasWorkDup, isFullDup;
+	HANDLE responses[2];
 	PBACKUPENTRY backupEntry;
 	DWORD wfmoRet;
 
@@ -182,64 +182,90 @@ BOOL FileOperation(HBACKUPSERVICE service, TCHAR * file, enum OPERATION operatio
 
 	// Is it better to put WaitForSingleObject(rqstsMutexDup, INFINITE) here?
 
+	serverProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID);
+	currentProcess = GetCurrentProcess();
+
 	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID),
+		serverProcess,
 		service->rqstsMutex,
-		GetCurrentProcess(),
+		currentProcess,
 		&rqstsMutexDup,
 		0,		// This parameter is ignored if the dwOptions parameter specifies the DUPLICATE_SAME_ACCESS flag.
 		FALSE,
 		DUPLICATE_SAME_ACCESS))
 	{
-		printf("\n1. Could not duplicate the request Mutex Handle! (%d).\n"), GetLastError();
+		printf("\nCould not duplicate the request Mutex Handle (%d).\n"), GetLastError();
 		return FALSE;
 	}
 
 	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID),
+		serverProcess,
 		service->hasWork,
-		GetCurrentProcess(),
+		currentProcess,
 		&hasWorkDup,
 		0,
 		FALSE,
 		DUPLICATE_SAME_ACCESS))
 	{
-		printf("\n2. Could not duplicate the hasWork Mutex Handle! (%d).\n"), GetLastError();
+		printf("\nCould not duplicate the hasWork Handle (%d).\n"), GetLastError();
 		return FALSE;
 	}
 
 	// I need to do this here because of error handling
 	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID),
+		serverProcess,
 		service->isFull,
-		GetCurrentProcess(),
+		currentProcess,
 		&isFullDup,
 		0,
 		FALSE,
 		DUPLICATE_SAME_ACCESS))
 	{
-		printf("\n3. Could not duplicate the isFull Mutex Handle (%d).\n"), GetLastError();
+		printf("\nCould not duplicate the isFull Handle (%d).\n"), GetLastError();
 		return FALSE;
 	}
 
-	if (service->nRequests == MAX_CLIENTS){
-		printf("\n+++++ Too many clients, sorry :/ Wait a bit... +++++\n");
+	if (service->nRequests == MAX_REQUESTS){
+		printf("\n+++++ Too many requests, sorry :/ Wait a bit... +++++\n");
 		WaitForSingleObject(service->isFull, INFINITE);
 	}
 
 	WaitForSingleObject(rqstsMutexDup, INFINITE);
 	{
 		backupEntry = &service->requests[service->putRequest];
-		service->putRequest = service->putRequest == MAX_REQUESTS ? 0 : service->putRequest+1;
+		service->putRequest = service->putRequest == MAX_REQUESTS ? 0 : service->putRequest + 1;
 
 		backupEntry->clientProcID = GetCurrentProcessId();
 		backupEntry->operation = operation;
 		strcpy_s(backupEntry->file, strlen(file) + 1, file);
 
-		backupEntry->hArray[0] = CreateEvent(NULL, FALSE, FALSE, "success");	// Auto-Reset Event (FALSE), com nome ("success")
-		backupEntry->hArray[1] = CreateEvent(NULL, FALSE, FALSE, "failure");	// Auto-Reset Event (FALSE), com nome ("failure")
+		if (!DuplicateHandle(
+			serverProcess,
+			backupEntry->hArray[0],
+			currentProcess,
+			&responses[0],
+			0,
+			FALSE,
+			DUPLICATE_SAME_ACCESS))
+		{
+			printf("\nCould not duplicate the success Handle (%d).\n"), GetLastError();
+			return FALSE;
+		}
 
-		if (service->putRequest == MAX_CLIENTS)
+		if (!DuplicateHandle(
+			serverProcess,
+			backupEntry->hArray[1],
+			currentProcess,
+			&responses[1],
+			0,
+			FALSE,
+			DUPLICATE_SAME_ACCESS))
+		{
+			printf("\nCould not duplicate the failure Handle (%d).\n"), GetLastError();
+			return FALSE;
+		}
+
+		if (service->putRequest == MAX_REQUESTS)
 			SetEvent(isFullDup);
 
 		SetEvent(hasWorkDup);
@@ -247,21 +273,20 @@ BOOL FileOperation(HBACKUPSERVICE service, TCHAR * file, enum OPERATION operatio
 	ReleaseMutex(rqstsMutexDup);
 
 	wfmoRet = WaitForMultipleObjects(
-		2,						// number of objects in array
-		backupEntry->hArray,	// array of objects
-		FALSE,					// wait for any object
-		INFINITE				// Infinite wait
+		2,			// Number of objects in array
+		responses,	// Array of objects
+		FALSE,		// Wait for any object
+		INFINITE	// Infinite wait
 	);
 
 	switch (wfmoRet)
 	{
-		// hArray[0] was signaled
+		// responses[0] was signaled
 		case WAIT_OBJECT_0 + 0:
-			// TODO: Perform tasks required by this event
 			printf("\nOperation returned success.\n");
 			break;
 
-		// hArray[1] was signaled
+		// responses[1] was signaled
 		case WAIT_OBJECT_0 + 1:
 			printf("\nOperation returned failure.\n");
 			break;

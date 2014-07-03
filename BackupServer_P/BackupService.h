@@ -11,7 +11,6 @@
 extern "C" {
 #endif
 
-#define MAX_CLIENTS 16
 #define MAX_REQUESTS 100
 
 enum OPERATION
@@ -24,10 +23,10 @@ enum OPERATION
 /*
 Cada entrada de pedido (do tipo BACKUPENTRY, a definir) deve conter os seguintes
 dados:
-- Identificação do ficheiro.
-- Identificador do processo que originou o pedido.
-- Dois HANDLEs para indicar o resultado da operação (sucesso ou insucesso).
-- O tipo de operação a realizar (backup, restore e exit).
+	- Identificação do ficheiro.
+	- Identificador do processo que originou o pedido.
+	- Dois HANDLEs para indicar o resultado da operação (sucesso ou insucesso).
+	- O tipo de operação a realizar (backup, restore e exit).
 */
 typedef struct{
 	TCHAR file[200];
