@@ -1,62 +1,58 @@
+#include <string.h>
 #include "BackupService.h"
 
 /****************************** Server *********************************/
 HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
+	HBACKUPSERVICE backupService;
+	HANDLE hMapFile;
 	LPCTSTR pBuf;
-	BOOL hasError = FALSE;
-
-	HBACKUPSERVICE backupService = *(PHBACKUPSERVICE)malloc(sizeof(HBACKUPSERVICE));
 
 	/* Um processo (servidor) instancia o serviço (CreateBackupService), ficando responsável
 	por realizar as cópias dos ficheiros à medida que os pedidos vão aparecendo (ProcessNextEntry) */
 
-	backupService.hMapFile = CreateFileMapping(
+	hMapFile = CreateFileMapping(
 		INVALID_HANDLE_VALUE,
 		NULL,
 		PAGE_READWRITE,
 		0,
-		sizeof(backupService),
+		sizeof(BACKUPSERVICE),
 		serviceName
 	);
 
-	if (backupService.hMapFile == NULL){
+	if (hMapFile == NULL){
 		printf("Could not create file mapping object (%d).\n", GetLastError());
-		hasError = TRUE;
+		return NULL;
+	}
+	pBuf = (LPCTSTR)MapViewOfFile(
+		hMapFile,				//_In_  HANDLE	hFileMappingObject,
+		FILE_MAP_ALL_ACCESS,	//_In_  DWORD	dwDesiredAccess,
+		0,						//_In_  DWORD	dwFileOffsetHigh,
+		0,						//_In_  DWORD	dwFileOffsetLow,
+		sizeof(BACKUPSERVICE)	//_In_  SIZE_T	dwNumberOfBytesToMap
+	);
+
+	if (pBuf == NULL){
+		printf("Could not create file mapping object (%d).\n", GetLastError());
+		CloseHandle(hMapFile);
+		return NULL;
 	}
 
-	if (hasError == FALSE){
-		pBuf = (LPCTSTR)MapViewOfFile(
-			backupService.hMapFile,			//_In_  HANDLE	hFileMappingObject,
-			FILE_MAP_ALL_ACCESS,			//_In_  DWORD	dwDesiredAccess,
-			0,								//_In_  DWORD	dwFileOffsetHigh,
-			0,								//_In_  DWORD	dwFileOffsetLow,
-			sizeof(backupService)			//_In_  SIZE_T	dwNumberOfBytesToMap
-			);
+	backupService = (HBACKUPSERVICE)pBuf;
 
-		if (pBuf == NULL){
-			printf("Could not create file mapping object (%d).\n", GetLastError());
-			CloseHandle(backupService.hMapFile);
-			hasError = TRUE;
-		}
+	backupService->hMapFile = hMapFile;
+	backupService->repoPath = repoPath;
+	backupService->nRequests = 0;
+	backupService->putRequest = 0;
+	backupService->getRequest = 0;
+	backupService->isAlive = TRUE;
+	backupService->processID = GetCurrentProcessId();
 
-		if (hasError == FALSE){
-			backupService = *(PHBACKUPSERVICE)pBuf;
+	backupService->rqstsMutex = CreateMutex(NULL, FALSE, NULL);		// Mutex sem nome que trata de lidar com a lista de requestss
+	backupService->hasWork = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
+	backupService->isFull = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
 
-			backupService.repoPath = repoPath;
-			backupService.nRequests = 0;
-			backupService.putRequest = 0;
-			backupService.getRequest = 0;
-			backupService.isAlive = TRUE;
-			backupService.processID = GetCurrentProcessId();
-
-			backupService.rqstsMutex = CreateMutex(NULL, FALSE, NULL);		// Mutex sem nome que trata de lidar com a lista de requestss
-			backupService.hasWork = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
-			backupService.isFull = CreateEvent(NULL, FALSE, FALSE, NULL);	// Auto-Reset Event (FALSE), sem nome (NULL)
-
-			printf("\n++++ Server with Service: %s is online! ++++\n\n", serviceName);
-			printf("\n++++ Repository Path: %s ++++\n\n", repoPath);
-		}
-	}
+	printf("\n++++ Server with Service: %s is online! ++++\n\n", serviceName);
+	printf("\n++++ Repository Path: %s ++++\n\n", repoPath);
 
 	return backupService;
 }
@@ -64,32 +60,34 @@ HBACKUPSERVICE CreateBackupService(TCHAR * serviceName, TCHAR * repoPath){
 BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 	BACKUPENTRY backupEntry;
 
-	if (service.isAlive == FALSE){
+	if (service->isAlive == FALSE){
 		printf("\n++++ Server is no longer working! ++++\n\n ");
 		return FALSE;
 	}
 
-	if (service.nRequests == 0){
+	if (service->nRequests == 0){
 		printf("\n++++ Server has nothing to do and it will sleep until there's work! ++++\n\n ");
-		WaitForSingleObject(service.hasWork, INFINITE);
+		WaitForSingleObject(service->hasWork, INFINITE);
 	}
 
 	// If the server is online and has work to do, then it should process the next entry on requests
-	WaitForSingleObject(service.rqstsMutex, INFINITE);
+	printf("\n++++ Server is going to process the next entry! ++++\n\n ");
+	WaitForSingleObject(service->rqstsMutex, INFINITE);
 	{
-		backupEntry = service.requests[service.getRequest++];
+		backupEntry = service->requests[service->getRequest];
+		service->getRequest = service->getRequest == MAX_REQUESTS ? 0 : service->getRequest++;
 	}
-	ReleaseMutex(service.rqstsMutex);
+	ReleaseMutex(service->rqstsMutex);
 	
 	switch (backupEntry.operation){
 		case Backup:
 			if (!CopyFile(
-				backupEntry.clientFolder,	// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
-				service.repoPath,			// _In_  LPCTSTR lpNewFileName
-				FALSE						// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
+				backupEntry.file,	// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
+				service->repoPath,	// _In_  LPCTSTR lpNewFileName
+				FALSE				// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
 				))
 			{
-				printf("Couldn't copy the file. Error %s", GetLastError());
+				printf("Couldn't copy the file. Error %d", GetLastError());
 				SetEvent(backupEntry.hArray[1]); // and return TRUE; ?
 			}
 			else{
@@ -98,12 +96,12 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 			break;
 		case Restore:
 			if (!CopyFile(
-				service.repoPath,			// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
-				backupEntry.clientFolder,	// _In_  LPCTSTR lpNewFileName
-				FALSE						// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
+				service->repoPath,	// _In_  LPCTSTR lpExistingFileName -> If lpExistingFileName does not exist, CopyFile fails, and GetLastError returns ERROR_FILE_NOT_FOUND.
+				backupEntry.file,	// _In_  LPCTSTR lpNewFileName
+				FALSE				// _In_  BOOL bFailIfExists -> If this parameter is TRUE and the new file specified by lpNewFileName already exists, the function fails. If this parameter is FALSE and the new file already exists, the function overwrites the existing file and succeeds.
 				))
 			{
-				printf("Couldn't copy the file. Error %s", GetLastError());
+				printf("Couldn't copy the file. Error %d", GetLastError());
 				SetEvent(backupEntry.hArray[1]); // and return FALSE; ?
 			}
 			else{
@@ -114,11 +112,11 @@ BOOL ProcessNextEntry(HBACKUPSERVICE service, ProcessorFunc processor){
 			// TODO
 			break;
 		default:
-			printf("An error has occurred: %s", GetLastError());
+			printf("An error has occurred: %d", GetLastError());
 			return FALSE;
 	}
 
-	ResetEvent(service.isFull); // If a request was replied, then the server has at least one slot available
+	ResetEvent(service->isFull); // If a request was replied, then the server has at least one slot available
 
 	return TRUE;
 }
@@ -130,11 +128,8 @@ BOOL CloseBackupService(HBACKUPSERVICE service){
 /****************************** Client *********************************/
 HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	HBACKUPSERVICE backupService;
+	HANDLE hMapFile;
 	LPTSTR pBuf;
-
-	BOOL hasError = FALSE;
-
-	backupService = *((PHBACKUPSERVICE)malloc(sizeof(HBACKUPSERVICE)));
 
 	/*
 	Os clientes, que não poderão ser mais do que MAX_CLIENTS em simultâneo, encontram o espaço de memória
@@ -143,108 +138,110 @@ HBACKUPSERVICE OpenBackupService(TCHAR * serviceName){
 	entre o servidor e um cliente específico.
 	*/
 
-	backupService.hMapFile = OpenFileMapping(
+	hMapFile = OpenFileMapping(
 		FILE_MAP_ALL_ACCESS,
 		FALSE,
 		serviceName);
 
-	if (backupService.hMapFile == NULL){
+	if (hMapFile == NULL){
 		printf("Could not create file mapping object (%d).\n", GetLastError());
-		hasError = TRUE;
+		return NULL;
 	}
 
-	if (hasError == FALSE){
-		pBuf = (LPTSTR)MapViewOfFile(backupService.hMapFile,
-			FILE_MAP_ALL_ACCESS,
-			0,
-			0,
-			sizeof(backupService));
+	pBuf = (LPTSTR)MapViewOfFile(hMapFile,
+		FILE_MAP_ALL_ACCESS,
+		0,
+		0,
+		sizeof(BACKUPSERVICE));
 
-		if (pBuf == NULL)
-		{
-			printf("Could not create file mapping object (%d).\n", GetLastError());
-			CloseHandle(backupService.hMapFile);
-			hasError = TRUE;
-		}
-
-		if (hasError == FALSE){
-			backupService = *(PHBACKUPSERVICE)pBuf;
-
-			printf("\n++++ Found the Server with service name: %s ++++\n", serviceName);
-		}
+	if (pBuf == NULL)
+	{
+		printf("Could not create file mapping object (%d).\n", GetLastError());
+		CloseHandle(hMapFile);
+		return NULL;
 	}
+
+	backupService = (HBACKUPSERVICE)pBuf;
+
+	backupService->hMapFile = hMapFile;
+
+	printf("\n++++ Found the Server with service name: %s ++++\n", serviceName);
 
 	return backupService;
 }
 
-BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
+BOOL FileOperation(HBACKUPSERVICE service, TCHAR * file, enum OPERATION operation){
 	HANDLE rqstsMutexDup, hasWorkDup, isFullDup;
-	BACKUPENTRY backupEntry;
+	PBACKUPENTRY backupEntry;
 	DWORD wfmoRet;
+	TCHAR cenas[200];
 
-	if (service.isAlive == TRUE){
+	if (service->isAlive == FALSE){
 		printf("\n+++++ Server is offline, declining this request! +++++\n");
 		return FALSE;
 	}
 
 	// Is it better to put WaitForSingleObject(rqstsMutexDup, INFINITE) here?
-	
-	if (service.nRequests == MAX_CLIENTS){
-		printf("\n+++++ Too many clients, sorry :/ Wait a bit... +++++\n");
-		WaitForSingleObject(service.isFull, INFINITE);
-	}
 
 	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service.processID),
-		service.rqstsMutex,
+		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID),
+		service->rqstsMutex,
 		GetCurrentProcess(),
 		&rqstsMutexDup,
-		0,
+		0,		// This parameter is ignored if the dwOptions parameter specifies the DUPLICATE_SAME_ACCESS flag.
 		FALSE,
 		DUPLICATE_SAME_ACCESS))
 	{
-		printf("1. Could not create duplicate the Request Mutex Handle (%d).\n"), GetLastError();
+		printf("\n1. Could not duplicate the request Mutex Handle! (%d).\n"), GetLastError();
 		return FALSE;
 	}
-	
+
 	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service.processID),
-		service.hasWork,
+		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID),
+		service->hasWork,
 		GetCurrentProcess(),
 		&hasWorkDup,
 		0,
 		FALSE,
 		DUPLICATE_SAME_ACCESS))
 	{
-		printf("2. Could not create duplicate the hasWork Mutex Handle (%d).\n"), GetLastError();
+		printf("\n2. Could not duplicate the hasWork Mutex Handle! (%d).\n"), GetLastError();
 		return FALSE;
 	}
 
 	// I need to do this here because of error handling
 	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service.processID),
-		service.isFull,
+		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service->processID),
+		service->isFull,
 		GetCurrentProcess(),
 		&isFullDup,
 		0,
 		FALSE,
 		DUPLICATE_SAME_ACCESS))
 	{
-		printf("3. Could not create duplicate the isFull Mutex Handle (%d).\n"), GetLastError();
+		printf("\n3. Could not duplicate the isFull Mutex Handle (%d).\n"), GetLastError();
 		return FALSE;
+	}
+
+	if (service->nRequests == MAX_CLIENTS){
+		printf("\n+++++ Too many clients, sorry :/ Wait a bit... +++++\n");
+		WaitForSingleObject(service->isFull, INFINITE);
 	}
 
 	WaitForSingleObject(rqstsMutexDup, INFINITE);
 	{
-		//printf("[C] Acquire Mutex\n");
-		backupEntry = service.requests[service.putRequest++];
+		backupEntry = &service->requests[service->putRequest];
+		service->putRequest = service->putRequest == MAX_REQUESTS ? 0 : service->putRequest++;
 
-		backupEntry.clientProcID = GetCurrentProcessId();
-		backupEntry.operation = Backup;
-		backupEntry.file = file;
+		backupEntry->clientProcID = GetCurrentProcessId();
+		backupEntry->operation = operation;
+		strcpy_s(backupEntry->file, strlen(file) + 1, file);
 
-		backupEntry.hArray[0] = CreateEvent(NULL, FALSE, FALSE, "success");	// Auto-Reset Event (FALSE), com nome ("success")
-		backupEntry.hArray[1] = CreateEvent(NULL, FALSE, FALSE, "failure");	// Auto-Reset Event (FALSE), com nome ("failure")
+		backupEntry->hArray[0] = CreateEvent(NULL, FALSE, FALSE, "success");	// Auto-Reset Event (FALSE), com nome ("success")
+		backupEntry->hArray[1] = CreateEvent(NULL, FALSE, FALSE, "failure");	// Auto-Reset Event (FALSE), com nome ("failure")
+
+		if (service->putRequest == MAX_CLIENTS)
+			SetEvent(isFullDup);
 
 		SetEvent(hasWorkDup);
 	}
@@ -252,7 +249,7 @@ BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
 
 	wfmoRet = WaitForMultipleObjects(
 		2,						// number of objects in array
-		backupEntry.hArray,	// array of objects
+		backupEntry->hArray,	// array of objects
 		FALSE,					// wait for any object
 		INFINITE				// Infinite wait
 	);
@@ -262,136 +259,33 @@ BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
 		// hArray[0] was signaled
 		case WAIT_OBJECT_0 + 0:
 			// TODO: Perform tasks required by this event
-			printf("Operation returned success.\n");
+			printf("\nOperation returned success.\n");
 			break;
 
 		// hArray[1] was signaled
 		case WAIT_OBJECT_0 + 1:
-			printf("Operation returned failure.\n");
+			printf("\nOperation returned failure.\n");
 			break;
 
 		case WAIT_TIMEOUT:
-			printf("Wait timed out.\n");
+			printf("\nWait timed out.\n");
 			return FALSE;
 
 		// Return value is invalid.
 		default:
-			printf("Wait error: %d\n", GetLastError());
-			return FALSE;
+		printf("\nWait error: %d\n", GetLastError());
+		return FALSE;
 	}
 
 	return TRUE;
 }
 
+BOOL BackupFile(HBACKUPSERVICE service, TCHAR * file){
+	return FileOperation(service, file, Backup);
+}
+
 BOOL RestoreFile(HBACKUPSERVICE service, TCHAR * file){
-	HANDLE rqstsMutexDup, hasWorkDup, isFullDup;
-	BACKUPENTRY backupEntry;
-	DWORD wfmoRet;
-
-	if (service.isAlive == TRUE){
-		printf("\n+++++ Server is offline, declining this request! +++++\n");
-		return FALSE;
-	}
-
-	// Is it better to put WaitForSingleObject(rqstsMutexDup, INFINITE) here?
-
-	if (service.nRequests == MAX_CLIENTS){
-		printf("\n+++++ Too many clients, sorry :/ Wait a bit... +++++\n");
-		WaitForSingleObject(service.isFull, INFINITE);
-	}
-
-	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service.processID),
-		service.rqstsMutex,
-		GetCurrentProcess(),
-		&rqstsMutexDup,
-		0,
-		FALSE,
-		DUPLICATE_SAME_ACCESS))
-	{
-		printf("1. Could not create duplicate the Request Mutex Handle (%d).\n"), GetLastError();
-		return FALSE;
-	}
-
-	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service.processID),
-		service.hasWork,
-		GetCurrentProcess(),
-		&hasWorkDup,
-		0,
-		FALSE,
-		DUPLICATE_SAME_ACCESS))
-	{
-		printf("2. Could not create duplicate the hasWork Mutex Handle (%d).\n"), GetLastError();
-		return FALSE;
-	}
-
-	// I need to do this here because of error handling
-	if (!DuplicateHandle(
-		OpenProcess(PROCESS_ALL_ACCESS, FALSE, service.processID),
-		service.isFull,
-		GetCurrentProcess(),
-		&isFullDup,
-		0,
-		FALSE,
-		DUPLICATE_SAME_ACCESS))
-	{
-		printf("3. Could not create duplicate the isFull Mutex Handle (%d).\n"), GetLastError();
-		return FALSE;
-	}
-
-	WaitForSingleObject(rqstsMutexDup, INFINITE);
-	{
-		//printf("[C] Acquire Mutex\n");
-		backupEntry = service.requests[service.putRequest++];
-
-		backupEntry.clientProcID = GetCurrentProcessId();
-		backupEntry.operation = Restore;
-		backupEntry.file = file;
-
-		backupEntry.hArray[0] = CreateEvent(NULL, FALSE, FALSE, "success");	// Auto-Reset Event (FALSE), com nome ("success")
-		backupEntry.hArray[1] = CreateEvent(NULL, FALSE, FALSE, "failure");	// Auto-Reset Event (FALSE), com nome ("failure")
-
-		SetEvent(hasWorkDup);
-
-		if (service.putRequest == MAX_CLIENTS)
-			SetEvent(isFullDup);
-
-	}
-	ReleaseMutex(rqstsMutexDup);
-
-	wfmoRet = WaitForMultipleObjects(
-		2,						// number of objects in array
-		backupEntry.hArray,	// array of objects
-		FALSE,					// wait for any object
-		INFINITE				// Infinite wait
-	);
-
-	switch (wfmoRet)
-	{
-		// hArray[0] was signaled
-		case WAIT_OBJECT_0 + 0:
-			// TODO: Perform tasks required by this event
-			printf("Operation returned success.\n");
-			break;
-
-		// hArray[1] was signaled
-		case WAIT_OBJECT_0 + 1:
-			printf("Operation returned failure.\n");
-			break;
-
-		case WAIT_TIMEOUT:
-			printf("Wait timed out.\n");
-			return FALSE;
-			break;
-
-			// Return value is invalid.
-		default:
-			printf("Wait error: %d\n", GetLastError());
-			return FALSE;
-	}
-
-	return TRUE;
+	return FileOperation(service, file, Restore);
 }
 
 BOOL StopBackupService(TCHAR * serviceName){

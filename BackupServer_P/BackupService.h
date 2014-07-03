@@ -30,17 +30,15 @@ dados:
 - O tipo de operação a realizar (backup, restore e exit).
 */
 typedef struct{
-	TCHAR * file;
+	TCHAR file[200];
 	DWORD clientProcID;
-	/*HANDLE sucess;
-	HANDLE failure;*/
-	HANDLE hArray[2]; // hArray[0]= success; hArray[1] = failure; 
+	HANDLE hArray[2];		// hArray[0] = success; hArray[1] = failure; 
 	enum OPERATION operation;
-	TCHAR *clientFolder; // For restore purposes
+	//TCHAR * clientFolder;	// For backup/restore purposes
 }BACKUPENTRY, *PBACKUPENTRY;
 
 typedef struct{
-	TCHAR* repoPath;
+	TCHAR * repoPath;
 	HANDLE hMapFile;
 	HANDLE hasWork;
 	HANDLE isFull;
@@ -51,7 +49,7 @@ typedef struct{
 	DWORD putRequest;
 	DWORD getRequest;
 	BOOL isAlive;
-}HBACKUPSERVICE, *PHBACKUPSERVICE;
+}BACKUPSERVICE, *HBACKUPSERVICE;
 
 typedef BOOL(*ProcessorFunc) (PBACKUPENTRY pentry);
 BACKUPSERVICE_API BOOL CloseBackupService(HBACKUPSERVICE service);

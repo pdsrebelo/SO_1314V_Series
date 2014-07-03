@@ -1,4 +1,3 @@
-/* COMPILE THIS FILE FROM MAKEFILE */
 #include "BackupService.h"
 
 int main(int argc, char* argv[]){
@@ -7,11 +6,11 @@ int main(int argc, char* argv[]){
 		return 0;
 	}
 
-	//HBACKUPSERVICE backupService = CreateBackupService("Server", "C:\\Users\\prebelo\\Desktop\\ISEL\\SO_1314V_Series\\BackupServer_P\\Repository");
-
 	HBACKUPSERVICE backupService = CreateBackupService(argv[1], argv[2]);
-
-	while (ProcessNextEntry(backupService, NULL) == TRUE);
+	
+	if (backupService != NULL){
+		while (ProcessNextEntry(backupService, NULL) == TRUE);
+	}
 
 	printf("\n++++ Server is Offline ++++\n");
 
