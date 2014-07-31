@@ -1,0 +1,3 @@
+BackupServer Server C:\\Users\\prebelo\\Desktop\\ISEL\\SO_1314V_Series\\BackupServer_P\\Repository
+
+BackupClient Server backup C:\\Users\\prebelo\\Desktop\\ISEL\\SO_1314V_Series\\BackupServer_P\\ClientFolder\\xpto.txt
