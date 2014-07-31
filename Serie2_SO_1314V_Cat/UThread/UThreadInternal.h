@@ -79,8 +79,8 @@ typedef struct _UTHREAD {
 
 
 typedef struct SleepingThread{
-	DWORD extraTimeSleeping;
-	HANDLE uthread;
+	DWORD timeStartedSleeping;
+	UTHREAD uthread;
 	LIST_ENTRY Link;
 } SLEEPING_UTHREAD, *PSLEEPING_UTHREAD;
 

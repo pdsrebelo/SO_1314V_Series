@@ -75,11 +75,11 @@ DWORD currentEx2Test, totalEx2Tests;
 
 // function that call UtSleep
 void auxFunction_for_Ex2(UT_ARGUMENT time){
-	DWORD minimumTime = (DWORD)time, totalTests=3;	// Minimum time for the thread to Sleep
+	DWORD minimumTime = (DWORD)time;	// Minimum time for the thread to Sleep
 	DWORD totalTimeWaiting = UtSleep(minimumTime);	// Expected return: >= 4000
 	printf("\n\n -> Expected: >= %d ... Returned: %d \n", minimumTime, totalTimeWaiting);
 	_ASSERTE(totalTimeWaiting >= minimumTime);
-	printf("\nPress any key to continue... (%d / %d Tests passed)", currentEx2Test++, totalTests);
+	printf("\nPress any key to continue... (%d / %d Tests passed)", currentEx2Test++, totalEx2Tests);
 	getchar();
 }
 
@@ -91,7 +91,7 @@ void EX2_TEST() {
 	_tprintf(_T("\n :::  *** -- Starting EXERCICIO 2 (UtSleep function) TEST -- ***  ::: \n"));
 
 	// Wait more than 0 milliseconds
-	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)NULL);
+	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)0);
 
 	// Wait more than 2000 milliseconds
 	UtCreate(auxFunction_for_Ex2, (UT_ARGUMENT)2000);
